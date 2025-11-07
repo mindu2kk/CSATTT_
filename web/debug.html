@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug Library Blockchain</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+        .status { margin: 10px 0; padding: 10px; border: 1px solid #333; }
+        .success { border-color: #00ff00; }
+        .error { border-color: #ff0000; color: #ff0000; }
+        .warning { border-color: #ffaa00; color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Library Blockchain Debug</h1>
+    
+    <div id="ethersStatus" class="status">
+        <h3>Ethers.js Status</h3>
+        <div id="ethersCheck">Checking...</div>
+    </div>
+    
+    <div id="metamaskStatus" class="status">
+        <h3>MetaMask Status</h3>
+        <div id="metamaskCheck">Checking...</div>
+    </div>
+    
+    <div id="contractsStatus" class="status">
+        <h3>Contracts Status</h3>
+        <div id="contractsCheck">Checking...</div>
+    </div>
+    
+    <div id="networkStatus" class="status">
+        <h3>Network Status</h3>
+        <div id="networkCheck">Checking...</div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <button onclick="runFullTest()" style="padding: 10px 20px; font-size: 16px;">🧪 Run Full Test</button>
+        <button onclick="location.href='index.html'" style="padding: 10px 20px; font-size: 16px;">🏠 Back to App</button>
+    </div>
+    
+    <div id="testResults" style="margin-top: 20px;"></div>
+
+    <!-- Try multiple CDNs for ethers -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script>
+        let ethersLoaded = false;
+        let metamaskAvailable = false;
+        let contractsLoaded = false;
+        
+        // Check ethers
+        function checkEthers() {
+            const ethersDiv = document.getElementById('ethersCheck');
+            
+            if (typeof ethers !== 'undefined') {
+                ethersLoaded = true;
+                ethersDiv.innerHTML = '✅ Ethers.js loaded successfully<br>Version: ' + (ethers.version || 'Unknown');
+                document.getElementById('ethersStatus').className = 'status success';
+            } else {
+                ethersDiv.innerHTML = '❌ Ethers.js not loaded<br>Trying alternative CDN...';
+                document.getElementById('ethersStatus').className = 'status error';
+                
+                // Try backup CDN
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/ethers@5.7.2/dist/ethers.min.js';
+                script.onload = () => {
+                    if (typeof ethers !== 'undefined') {
+                        ethersLoaded = true;
+                        ethersDiv.innerHTML = '✅ Ethers.js loaded from backup CDN<br>Version: ' + (ethers.version || 'Unknown');
+                        document.getElementById('ethersStatus').className = 'status success';
+                    }
+                };
+                document.head.appendChild(script);
+            }
+        }
+        
+        // Check MetaMask
+        function checkMetaMask() {
+            const metamaskDiv = document.getElementById('metamaskCheck');
+            
+            if (typeof window.ethereum !== 'undefined') {
+                metamaskAvailable = true;
+                metamaskDiv.innerHTML = '✅ MetaMask detected<br>Provider: ' + (window.ethereum.isMetaMask ? 'MetaMask' : 'Other');
+                document.getElementById('metamaskStatus').className = 'status success';
+            } else {
+                metamaskDiv.innerHTML = '❌ MetaMask not found<br>Please install MetaMask extension';
+                document.getElementById('metamaskStatus').className = 'status error';
+            }
+        }
+        
+        // Check contracts
+        async function checkContracts() {
+            const contractsDiv = document.getElementById('contractsCheck');
+            
+            try {
+                const response = await fetch('./contracts.json');
+                const contracts = await response.json();
+                contractsLoaded = true;
+                
+                contractsDiv.innerHTML = `
+                    ✅ Contracts file loaded<br>
+                    BookNFT: ${contracts.bookNFT}<br>
+                    LibraryCore: ${contracts.libraryCore}<br>
+                    Network: ${contracts.network}<br>
+                    Chain ID: ${contracts.chainId}
+                `;
+                document.getElementById('contractsStatus').className = 'status success';
+            } catch (error) {
+                contractsDiv.innerHTML = '❌ Failed to load contracts.json<br>Error: ' + error.message;
+                document.getElementById('contractsStatus').className = 'status error';
+            }
+        }
+        
+        // Check network
+        async function checkNetwork() {
+            const networkDiv = document.getElementById('networkCheck');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8545', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        method: 'eth_chainId',
+                        params: [],
+                        id: 1
+                    })
+                });
+                
+                const data = await response.json();
+                const chainId = parseInt(data.result, 16);
+                
+                networkDiv.innerHTML = `✅ Hardhat node running<br>Chain ID: ${chainId}<br>RPC: http://127.0.0.1:8545`;
+                document.getElementById('networkStatus').className = 'status success';
+            } catch (error) {
+                networkDiv.innerHTML = `❌ Hardhat node not running<br>Error: ${error.message}<br><br>Run: npx hardhat node`;
+                document.getElementById('networkStatus').className = 'status error';
+            }
+        }
+        
+        // Run full test
+        async function runFullTest() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<h3>🧪 Running Full Test...</h3>';
+            
+            if (!ethersLoaded) {
+                resultsDiv.innerHTML += '<div class="error">❌ Cannot test without ethers.js</div>';
+                return;
+            }
+            
+            if (!metamaskAvailable) {
+                resultsDiv.innerHTML += '<div class="error">❌ Cannot test without MetaMask</div>';
+                return;
+            }
+            
+            try {
+                // Test MetaMask connection
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                resultsDiv.innerHTML += `<div class="success">✅ MetaMask connected: ${accounts[0]}</div>`;
+                
+                // Test provider
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const network = await provider.getNetwork();
+                resultsDiv.innerHTML += `<div class="success">✅ Network: ${network.name} (${network.chainId})</div>`;
+                
+                // Test balance
+                const balance = await provider.getBalance(accounts[0]);
+                resultsDiv.innerHTML += `<div class="success">✅ Balance: ${ethers.utils.formatEther(balance)} ETH</div>`;
+                
+                resultsDiv.innerHTML += '<div class="success"><h4>🎉 All tests passed! You can use the main app now.</h4></div>';
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="error">❌ Test failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Run checks on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkEthers();
+                checkMetaMask();
+                checkContracts();
+                checkNetwork();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

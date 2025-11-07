@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Load Books</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+    <h1>Debug Load Books</h1>
+    <button onclick="testLoadBooks()">Test Load Books</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLoadBooks() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                // Load contracts.json
+                const response = await fetch('contracts.json');
+                const contracts = await response.json();
+                
+                resultDiv.innerHTML += `<p>✅ Contracts loaded: ${JSON.stringify(contracts)}</p>`;
+
+                // Connect to provider
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not found');
+                }
+
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
+
+                resultDiv.innerHTML += `<p>✅ Connected: ${userAddress}</p>`;
+
+                // BookNFT ABI (minimal)
+                const BOOK_NFT_ABI = [
+                    "function nextBookId() external view returns (uint256)",
+                    {
+                        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+                        "name": "getBookInfo",
+                        "outputs": [
+                            {"internalType": "string", "name": "name", "type": "string"},
+                            {"internalType": "string", "name": "description", "type": "string"},
+                            {"internalType": "uint8", "name": "status", "type": "uint8"},
+                            {"internalType": "uint256", "name": "createdAt", "type": "uint256"}
+                        ],
+                        "stateMutability": "view",
+                        "type": "function"
+                    },
+                    "function getBookStatus(uint256 tokenId) external view returns (uint8)",
+                    "function ownerOf(uint256 tokenId) external view returns (address)"
+                ];
+
+                const bookNFTContract = new ethers.Contract(contracts.bookNFT, BOOK_NFT_ABI, signer);
+
+                // Test nextBookId
+                const nextBookId = await bookNFTContract.nextBookId();
+                const totalBooks = Number(nextBookId);
+                
+                resultDiv.innerHTML += `<p>✅ Next Book ID: ${totalBooks}</p>`;
+
+                // Load all books
+                for (let i = 0; i < totalBooks; i++) {
+                    try {
+                        resultDiv.innerHTML += `<p>Loading book ${i}...</p>`;
+                        
+                        let bookInfo, owner, status;
+                        try {
+                            [bookInfo, owner, status] = await Promise.all([
+                                bookNFTContract.getBookInfo(i),
+                                bookNFTContract.ownerOf(i),
+                                bookNFTContract.getBookStatus(i)
+                            ]);
+                        } catch (error) {
+                            // If error has data, try to decode it
+                            console.log(`Book ${i} error:`, error);
+                            console.log(`Error keys:`, Object.keys(error));
+                            console.log(`Error.data:`, error.data);
+                            
+                            // Check for data in different possible locations
+                            let errorData = error.data;
+                            if (!errorData && error.error && error.error.data) {
+                                errorData = error.error.data;
+                            }
+                            
+                            if (errorData && errorData !== '0x' && errorData.length > 2) {
+                                console.log(`Book ${i} error has data, decoding...`);
+                                console.log(`Data:`, errorData);
+                                try {
+                                    // Manual decode from hex data
+                                    // Skip first 32 bytes (offset)
+                                    const data = errorData.slice(2); // Remove '0x'
+                                    const offset1 = parseInt(data.slice(64, 128), 16); // String 1 offset
+                                    const offset2 = parseInt(data.slice(128, 192), 16); // String 2 offset
+                                    const statusValue = parseInt(data.slice(192, 256), 16); // Status
+                                    const createdAtValue = parseInt(data.slice(256, 320), 16); // CreatedAt
+                                    
+                                    // Decode name (string 1)
+                                    const nameLength = parseInt(data.slice(offset1 * 2, offset1 * 2 + 64), 16);
+                                    const nameHex = data.slice(offset1 * 2 + 64, offset1 * 2 + 64 + nameLength * 2);
+                                    const name = ethers.utils.toUtf8String('0x' + nameHex);
+                                    
+                                    // Decode description (string 2)
+                                    const descLength = parseInt(data.slice(offset2 * 2, offset2 * 2 + 64), 16);
+                                    const descHex = data.slice(offset2 * 2 + 64, offset2 * 2 + 64 + descLength * 2);
+                                    const description = ethers.utils.toUtf8String('0x' + descHex);
+                                    
+                                    console.log(`✅ Manually decoded Book ${i}:`, { name, description, status: statusValue, createdAt: createdAtValue });
+                                    
+                                    bookInfo = {
+                                        name: name,
+                                        description: description,
+                                        status: statusValue,
+                                        createdAt: ethers.BigNumber.from('0x' + data.slice(256, 320))
+                                    };
+                                    owner = await bookNFTContract.ownerOf(i).catch(() => 'N/A');
+                                    status = bookInfo.status;
+                                } catch (decodeError) {
+                                    console.error(`❌ Failed to decode:`, decodeError);
+                                    resultDiv.innerHTML += `<p style="color: orange;">⚠️ Book ${i}: Error but has data. Decode failed: ${decodeError.message}</p>`;
+                                    continue; // Skip this book
+                                }
+                            } else {
+                                console.error(`Book ${i} error has no decodable data`);
+                                throw error;
+                            }
+                        }
+
+                        resultDiv.innerHTML += `
+                            <div style="border: 1px solid #ccc; padding: 10px; margin: 10px;">
+                                <h3>Book #${i}</h3>
+                                <p><strong>Name:</strong> ${bookInfo.name}</p>
+                                <p><strong>Description:</strong> ${bookInfo.description}</p>
+                                <p><strong>Status:</strong> ${status}</p>
+                                <p><strong>Owner:</strong> ${owner}</p>
+                                <p><strong>Created At:</strong> ${bookInfo.createdAt.toString()}</p>
+                            </div>
+                        `;
+                    } catch (error) {
+                        resultDiv.innerHTML += `<p style="color: red;">❌ Book ${i} error: ${error.message}</p>`;
+                    }
+                }
+
+                resultDiv.innerHTML += `<p style="color: green;">✅ Done! Loaded ${totalBooks} books</p>`;
+
+            } catch (error) {
+                resultDiv.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
