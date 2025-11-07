@@ -199,15 +199,6 @@ vercel --prod
 
 ---
 
-## 📚 Tài Liệu
-
-- `DEPLOY_TO_PRODUCTION.md` - Hướng dẫn deploy lên production
-- `QUICK_DEPLOY.md` - Hướng dẫn deploy nhanh
-- `TESTING_GUIDE.md` - Hướng dẫn test với 2 accounts
-- `DEPOSIT_FLOW_DIAGRAM.md` - Giải thích flow tiền cọc
-
----
-
 ## 🆘 Troubleshooting
 
 ### Lỗi "nonce has already been used"
