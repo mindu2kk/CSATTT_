@@ -11,6 +11,7 @@ let contracts = null;
 const BOOK_NFT_ABI = [
     "function mintBook(string memory name, string memory description, uint8 status) external returns (uint256)",
     "function mintBookWithCondition(string memory name, string memory description, uint8 status, uint8 condition) external returns (uint256)",
+    "function mintBookWithImage(string memory name, string memory description, uint8 status, uint8 condition, string memory imageBeforeHash) external returns (uint256)",
     {
         "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
         "name": "getBookInfo",
@@ -19,15 +20,19 @@ const BOOK_NFT_ABI = [
             {"internalType": "string", "name": "description", "type": "string"},
             {"internalType": "uint8", "name": "status", "type": "uint8"},
             {"internalType": "uint8", "name": "condition", "type": "uint8"},
-            {"internalType": "uint256", "name": "createdAt", "type": "uint256"}
+            {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
+            {"internalType": "string", "name": "imageBeforeHash", "type": "string"},
+            {"internalType": "string", "name": "imageAfterHash", "type": "string"}
         ],
         "stateMutability": "view",
         "type": "function"
     },
     "function getBookStatus(uint256 tokenId) external view returns (uint8)",
     "function getCondition(uint256 tokenId) external view returns (uint8)",
+    "function getBookImage(uint256 tokenId, string memory imageType) external view returns (string memory)",
     "function updateBookStatus(uint256 tokenId, uint8 newStatus) external",
     "function updateCondition(uint256 tokenId, uint8 newCondition) external",
+    "function updateBookImage(uint256 tokenId, string memory imageType, string memory imageHash) external",
     "function setAuthorizedUpdater(address updater, bool authorized) external",
     "function nextBookId() external view returns (uint256)",
     "function ownerOf(uint256 tokenId) external view returns (address)"
@@ -36,6 +41,7 @@ const BOOK_NFT_ABI = [
 const LIBRARY_CORE_ABI = [
     "function borrowBook(uint256 bookId) external payable",
     "function returnBook(uint256 bookId, uint8 returnStatus) external",
+    "function returnBookWithImage(uint256 bookId, uint8 returnStatus, string memory imageAfterHash) external",
     {
         "inputs": [{"internalType": "uint256", "name": "bookId", "type": "uint256"}],
         "name": "loanInfos",
@@ -267,6 +273,127 @@ function setupTabs() {
     });
 }
 
+// Check blockchain sync status
+async function checkBlockchainSync() {
+    try {
+        const blockNumber = await provider.getBlockNumber();
+        console.log('📊 Current block number:', blockNumber);
+        
+        // If block number is very low, blockchain might be freshly restarted
+        if (blockNumber < 10) {
+            console.warn('⚠️ Low block number detected. Blockchain may have been restarted.');
+            console.warn('💡 If you see "invalid block tag" errors, clear MetaMask cache:');
+            console.warn('   Settings → Advanced → Clear activity tab data');
+            
+            // Show warning banner
+            const warningBanner = document.createElement('div');
+            warningBanner.id = 'blockchainWarning';
+            warningBanner.style.cssText = `
+                position: fixed;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #fff3cd;
+                color: #856404;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                z-index: 9999;
+                max-width: 600px;
+                text-align: center;
+                font-size: 14px;
+                border: 1px solid #ffc107;
+            `;
+            warningBanner.innerHTML = `
+                ⚠️ <strong>Blockchain recently restarted</strong> (Block: ${blockNumber})<br>
+                If you see errors, <a href="#" onclick="showCacheClearInstructions(); return false;" style="color: #004085; text-decoration: underline;">clear MetaMask cache</a>
+                <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 2px 8px; cursor: pointer;">✕</button>
+            `;
+            
+            // Remove existing warning if any
+            const existing = document.getElementById('blockchainWarning');
+            if (existing) existing.remove();
+            
+            document.body.appendChild(warningBanner);
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                if (warningBanner.parentElement) {
+                    warningBanner.style.transition = 'opacity 0.5s';
+                    warningBanner.style.opacity = '0';
+                    setTimeout(() => warningBanner.remove(), 500);
+                }
+            }, 10000);
+        }
+    } catch (error) {
+        console.error('❌ Failed to check blockchain sync:', error);
+        
+        // Check if it's a block mismatch error
+        if (error.message && error.message.includes('invalid block tag')) {
+            console.error('🚨 BLOCK MISMATCH DETECTED!');
+            console.error('💡 SOLUTION: Clear MetaMask cache');
+            console.error('   1. Open MetaMask');
+            console.error('   2. Settings → Advanced');
+            console.error('   3. Clear activity tab data');
+            console.error('   4. Refresh this page');
+            
+            showNotification(
+                '🚨 MetaMask cache mismatch! Please clear cache: Settings → Advanced → Clear activity tab data',
+                'error'
+            );
+        }
+    }
+}
+
+// Show cache clear instructions
+function showCacheClearInstructions() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0; color: #333;">🔧 Clear MetaMask Cache</h3>
+            <div style="text-align: left; line-height: 1.8;">
+                <p><strong>Why?</strong> MetaMask has cached old blockchain state.</p>
+                <p><strong>Steps:</strong></p>
+                <ol style="padding-left: 20px;">
+                    <li>Open MetaMask extension</li>
+                    <li>Click <strong>Account icon</strong> (top right)</li>
+                    <li>Select <strong>Settings</strong> ⚙️</li>
+                    <li>Select <strong>Advanced</strong></li>
+                    <li>Scroll down and click <strong>"Clear activity tab data"</strong></li>
+                    <li>Confirm the action</li>
+                    <li>Refresh this page (F5)</li>
+                </ol>
+                <p style="background: #e3f2fd; padding: 10px; border-radius: 4px; font-size: 13px;">
+                    💡 <strong>Tip:</strong> Always clear cache after restarting Hardhat node!
+                </p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                Got it!
+            </button>
+        </div>
+    `;
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+    
+    document.body.appendChild(modal);
+}
+
 // Connect to MetaMask
 async function connectWallet() {
     try {
@@ -284,42 +411,69 @@ async function connectWallet() {
         signer = provider.getSigner();
         userAddress = await signer.getAddress();
         
+        // Set wallet address in auth module
+        if (typeof setWalletAddress === 'function') {
+            setWalletAddress(userAddress);
+        }
+        
         // Check network and auto-switch if needed
         const network = await provider.getNetwork();
-        if (contracts && network.chainId !== contracts.chainId) {
-            console.log(`Current network: ${network.chainId}, Expected: ${contracts.chainId}`);
+        const expectedChainId = typeof contracts.chainId === 'string' ? parseInt(contracts.chainId) : contracts.chainId;
+        
+        if (contracts && network.chainId !== expectedChainId) {
+            console.log(`Current network: ${network.chainId}, Expected: ${expectedChainId}`);
+            
+            // Convert chainId to hex properly
+            const chainIdHex = '0x' + expectedChainId.toString(16);
+            
+            console.log(`Switching to chain ID: ${chainIdHex} (${expectedChainId})`);
             
             try {
                 // Try to switch network automatically
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: `0x${contracts.chainId.toString(16)}` }],
+                    params: [{ chainId: chainIdHex }],
                 });
                 
                 // Wait a bit for network switch
                 await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('✅ Network switched successfully');
                 
             } catch (switchError) {
-                console.log('Network switch failed, trying to add network:', switchError);
+                console.log('Network switch failed:', switchError);
                 
-                // If switch fails, try to add the network
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [{
-                            chainId: `0x${contracts.chainId.toString(16)}`,
-                            chainName: 'Hardhat Local',
-                            nativeCurrency: {
-                                name: 'Ethereum',
-                                symbol: 'ETH',
-                                decimals: 18,
-                            },
-                            rpcUrls: ['http://127.0.0.1:8545'],
-                            blockExplorerUrls: null,
-                        }],
-                    });
-                } catch (addError) {
-                    throw new Error(`Please manually switch MetaMask to Hardhat Local network (Chain ID: ${contracts.chainId})`);
+                // If error is "network not found", try to add it
+                if (switchError.code === 4902 || switchError.message.includes('Unrecognized')) {
+                    console.log('Network not found, adding new network...');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: chainIdHex,
+                                chainName: 'Hardhat Local Network',
+                                nativeCurrency: {
+                                    name: 'Ethereum',
+                                    symbol: 'ETH',
+                                    decimals: 18,
+                                },
+                                rpcUrls: ['http://127.0.0.1:8545'],
+                                blockExplorerUrls: null,
+                            }],
+                        });
+                        console.log('✅ Network added successfully');
+                    } catch (addError) {
+                        console.error('Failed to add network:', addError);
+                        alert('Please manually add Hardhat network in MetaMask:\n\n' +
+                              'Network Name: Hardhat Local\n' +
+                              'RPC URL: http://127.0.0.1:8545\n' +
+                              'Chain ID: 31337\n' +
+                              'Currency: ETH');
+                        throw addError;
+                    }
+                } else {
+                    // Other error, just show message
+                    alert('Please manually switch MetaMask to Hardhat Local network (Chain ID: 31337)');
+                    throw switchError;
                 }
             }
         }
@@ -345,6 +499,9 @@ async function connectWallet() {
             }
         }
         
+        // Check blockchain sync status
+        await checkBlockchainSync();
+        
         // Update UI
         const balance = await provider.getBalance(userAddress);
         document.getElementById('connectButton').style.display = 'none';
@@ -353,6 +510,17 @@ async function connectWallet() {
         document.getElementById('accountBalance').textContent = `${ethers.utils.formatEther(balance).slice(0, 6)} ETH`;
         
         localStorage.setItem('walletConnected', 'true');
+        
+        // Check user profile after wallet connection
+        if (window.profileManager) {
+            await window.profileManager.checkProfileOnConnect(userAddress);
+            
+            // Show notification if profile is incomplete
+            if (!window.profileManager.hasProfile()) {
+                showNotification('📝 Please complete your profile in the Profile tab!', 'info', 5000);
+            }
+        }
+        
         showNotification('✅ Wallet connected successfully!', 'success');
         
         // Load initial data
@@ -728,6 +896,62 @@ async function borrowBook() {
         
         // Borrow book
         const depositWei = ethers.utils.parseEther(depositAmount);
+        
+        // 🔍 SIMULATION: Test transaction first to get real error
+        console.log('🔍 Simulating transaction before sending...');
+        try {
+            // Use callStatic to simulate the transaction without sending it
+            await libraryCoreContract.callStatic.borrowBook(bookId, { 
+                value: depositWei,
+                from: userAddress 
+            });
+            console.log('✅ Simulation successful! Proceeding with real transaction...');
+        } catch (simulationError) {
+            // This is the REAL error from the smart contract!
+            console.error('❌ SIMULATION FAILED - Real error from contract:', simulationError);
+            
+            // Check for block mismatch error
+            if (simulationError.message && simulationError.message.includes('invalid block tag')) {
+                console.error('🚨 BLOCK MISMATCH ERROR DETECTED!');
+                throw new Error(
+                    '🚨 MetaMask Cache Mismatch!\n\n' +
+                    'Your MetaMask has cached old blockchain state.\n\n' +
+                    'SOLUTION:\n' +
+                    '1. Open MetaMask\n' +
+                    '2. Settings → Advanced\n' +
+                    '3. Click "Clear activity tab data"\n' +
+                    '4. Refresh this page (F5)\n\n' +
+                    'Or run: FIX_METAMASK_CACHE.bat'
+                );
+            }
+            
+            // Check for other RPC errors
+            if (simulationError.error && simulationError.error.data) {
+                const errorData = simulationError.error.data;
+                if (errorData.message && errorData.message.includes('invalid block tag')) {
+                    throw new Error(
+                        '🚨 Blockchain State Mismatch!\n\n' +
+                        `Error: ${errorData.message}\n\n` +
+                        'Clear MetaMask cache: Settings → Advanced → Clear activity tab data'
+                    );
+                }
+            }
+            
+            // Extract the revert reason
+            let errorMessage = 'Transaction will fail';
+            if (simulationError.reason) {
+                errorMessage = simulationError.reason;
+            } else if (simulationError.error && simulationError.error.message) {
+                errorMessage = simulationError.error.message;
+            } else if (simulationError.message) {
+                errorMessage = simulationError.message;
+            }
+            
+            // Show detailed error
+            throw new Error(`❌ Smart Contract Error: ${errorMessage}\n\nThis transaction would fail. Please check:\n- Book availability\n- Deposit amount\n- Your permissions`);
+        }
+        
+        // If simulation passed, send the real transaction
         const tx = await libraryCoreContract.borrowBook(bookId, { value: depositWei });
         
         showNotification('📚 Transaction sent! Waiting for confirmation...', 'info');
@@ -765,12 +989,64 @@ async function borrowBook() {
         
     } catch (error) {
         console.error('❌ Borrow failed:', error);
+        
+        // Extract detailed error information
+        let errorTitle = '❌ Failed to borrow book';
+        let errorDetails = error.message;
+        let errorCode = '';
+        let errorData = '';
+        
+        // Check for MetaMask/RPC errors
+        if (error.code) {
+            errorCode = `Error Code: ${error.code}`;
+            
+            // Common error codes
+            if (error.code === -32603) {
+                errorTitle = '❌ Internal JSON-RPC Error (-32603)';
+                errorDetails = 'Transaction simulation failed. See details below.';
+            } else if (error.code === 4001) {
+                errorTitle = '❌ Transaction Rejected';
+                errorDetails = 'You rejected the transaction in MetaMask.';
+            } else if (error.code === -32000) {
+                errorTitle = '❌ Insufficient Funds';
+                errorDetails = 'You don\'t have enough ETH for this transaction.';
+            }
+        }
+        
+        // Extract revert reason if available
+        if (error.reason) {
+            errorDetails = `Contract Revert: ${error.reason}`;
+        } else if (error.error && error.error.message) {
+            errorDetails = error.error.message;
+        }
+        
+        // Extract transaction data if available
+        if (error.transaction) {
+            errorData = `<details style="margin-top: 10px;">
+                <summary style="cursor: pointer; color: #666;">📋 Transaction Details</summary>
+                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${JSON.stringify(error.transaction, null, 2)}</pre>
+            </details>`;
+        }
+        
         document.getElementById('borrowResult').className = 'result-section error';
         document.getElementById('borrowResult').innerHTML = `
-            <h4>❌ Failed to borrow book</h4>
-            <p>${error.message}</p>
+            <h4>${errorTitle}</h4>
+            <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                <p><strong>Error:</strong> ${errorDetails}</p>
+                ${errorCode ? `<p><strong>${errorCode}</strong></p>` : ''}
+                <hr style="margin: 10px 0; border: none; border-top: 1px solid #ffcdd2;">
+                <p style="font-size: 14px; color: #666;">
+                    <strong>💡 Common Solutions:</strong><br>
+                    • Check if the book is available (not already borrowed)<br>
+                    • Ensure deposit amount is sufficient<br>
+                    • Verify you have enough ETH for gas fees<br>
+                    • Try refreshing MetaMask connection<br>
+                    • Check browser console (F12) for detailed logs
+                </p>
+                ${errorData}
+            </div>
         `;
-        showNotification(error.message, 'error');
+        showNotification(errorDetails, 'error');
     } finally {
         showLoading(false);
     }
@@ -1333,6 +1609,13 @@ async function updateBookStatus() {
 
 // Refresh profile
 async function refreshProfile() {
+    // Use the new profile manager if available
+    if (window.profileManager) {
+        await window.profileManager.refreshProfile();
+        return;
+    }
+    
+    // Fallback to old profile system
     if (!libraryCoreContract || !userAddress) {
         document.getElementById('reputationScore').textContent = 'Please connect wallet';
         document.getElementById('currentLoans').textContent = 'Please connect wallet';

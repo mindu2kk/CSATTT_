@@ -24,8 +24,11 @@
 .env.local
 .env.*.local
 
-# Documentation files (markdown)
+# Documentation files (markdown) - chỉ giữ lại các file quan trọng
 *.md
 !README.md
+!PHAN_TICH_CHI_TIET_DU_AN.md
+!CACH_CHAY_DU_AN.md
+!DIEM_CAN_CAI_THIEN.md
 
 

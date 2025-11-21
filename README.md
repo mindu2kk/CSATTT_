@@ -1,320 +1,399 @@
-# 📚 Library Blockchain Kit
+# 📚 Library Blockchain System
 
-Hệ thống quản lý thư viện trên blockchain với đầy đủ tính năng: mượn/trả sách, quản lý tiền cọc, hệ thống uy tín, và nhiều tính năng nâng cao.
+Hệ thống thư viện phi tập trung sử dụng blockchain Ethereum để quản lý việc mượn/trả sách thông qua NFT và smart contracts.
 
-## ✨ Tính Năng
+## 🎯 Tổng quan dự án
 
-### 🔐 Tính Năng Nâng Cao
-- ✅ **ReentrancyGuard**: Bảo vệ khỏi reentrancy attacks
-- ✅ **AccessControl**: Quản lý quyền (Admin, Librarian, Pauser)
-- ✅ **EscrowVault**: Quản lý tiền cọc an toàn, tách biệt
-- ✅ **Condition Enum**: Mô tả tình trạng sách chi tiết (New, Good, Fair, Poor)
-- ✅ **Pause/Unpause**: Tạm dừng contract khi cần
+Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phép:
+- **Quản lý sách dưới dạng NFT**: Mỗi cuốn sách là một token ERC721 duy nhất
+- **Mượn/trả sách tự động**: Smart contracts xử lý logic mượn trả và tiền cọc
+- **Hệ thống uy tín**: Theo dõi lịch sử mượn trả của người dùng
+- **Đa nền tảng**: Web interface, Java backend, và subgraph indexing
 
-### 📖 Chức Năng Chính
-- ✅ Mint sách mới (Admin)
-- ✅ Mượn sách với tiền cọc
-- ✅ Trả sách với tính phạt tự động
-- ✅ Hệ thống uy tín (reputation)
-- ✅ Quản lý tình trạng sách
-- ✅ Web interface đầy đủ
+## 🏗️ Kiến trúc hệ thống
 
----
+```
+📦 Library Blockchain System
+├── 🔗 Smart Contracts (Solidity)
+│   ├── BookNFT.sol - Quản lý sách dưới dạng NFT
+│   └── LibraryCore.sol - Logic mượn/trả sách
+├── 🌐 Web Frontend (HTML/JS)
+│   ├── Giao diện người dùng
+│   └── Tích hợp MetaMask
+├── ☕ Java Backend (Spring Boot)
+│   ├── REST API
+│   └── Web3 integration
+├── 📊 Subgraph (The Graph)
+│   └── Indexing blockchain data
+└── 🐍 Python Server
+    └── Simple HTTP server
+```
 
-## 🚀 Quick Start
+## 🚀 Cách chạy dự án
 
-### Bước 1: Cài Đặt Dependencies
+### Bước 1: Chuẩn bị môi trường
+
+**Yêu cầu hệ thống:**
+- Node.js (v18+) - BẮT BUỘC
+- Java 17+ - Tùy chọn (cho Java backend)
+- Python 3.8+ - Tùy chọn (cho Python API server)
+- MetaMask Extension - Khuyến nghị
+- Git
+
+**Cài đặt dependencies:**
 
 ```bash
+# 1. Cài đặt Node.js dependencies (BẮT BUỘC)
 npm install
+
+# 2. Cài đặt Python dependencies (TÙY CHỌN - cho Python API)
+cd python-blockchain-server
+pip install -r requirements.txt
+cd ..
+
+# 3. Cài đặt Java dependencies (TÙY CHỌN - cho Java backend)
+cd csattt
+mvnw.cmd clean install    # Windows
+# hoặc ./mvnw clean install  # Linux/Mac
+cd ..
 ```
 
-### Bước 2: Compile Contracts
-
+**Kiểm tra cấu hình:**
 ```bash
-npx hardhat compile
+node verify-config.js
 ```
 
-### Bước 3: Start Hardhat Node
+### Bước 2: Khởi động Blockchain Local
 
-Mở terminal 1:
 ```bash
+# Terminal 1: Khởi động Hardhat node
 npx hardhat node
 ```
 
-**Giữ terminal này mở!** Node sẽ chạy liên tục.
+Hardhat sẽ tạo một blockchain local với:
+- Chain ID: 31337
+- RPC URL: http://127.0.0.1:8545
+- 20 tài khoản test với 10,000 ETH mỗi tài khoản
 
-### Bước 4: Deploy Contracts
-
-Mở terminal 2 (mới):
-```bash
-npx hardhat run scripts/quick-deploy.ts --network localhost
+**✅ THÀNH CÔNG khi thấy:**
+```
+Started HTTP and WebSocket JSON-RPC server at http://127.0.0.1:8545/
+Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000 ETH)
+...
 ```
 
-Script sẽ tự động:
-- ✅ Deploy BookNFT, EscrowVault, LibraryCore
-- ✅ Setup authorization
-- ✅ Mint 3 sách mẫu
-- ✅ Update `web/contracts.json`
+### Bước 3: Deploy Smart Contracts
 
-### Bước 5: Start Web Server
-
-Mở terminal 3 (mới):
 ```bash
+# Terminal 2: Deploy contracts
+npx hardhat run scripts/deploy.ts --network localhost
+
+# Hoặc deploy phiên bản minimal (nhanh hơn)
+npx hardhat run scripts/deploy-minimal.ts --network localhost
+```
+
+**✅ THÀNH CÔNG khi thấy:**
+```
+🎉 Deployment Complete!
+📋 Contract Addresses:
+   BookNFT:      0x5FbDB2315678afecb367f032d93F642f64180aa3
+   LibraryCore:  0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+```
+
+Sau khi deploy thành công, contract addresses sẽ được lưu vào `web/contracts.json`.
+
+### Bước 4: Khởi động các services
+
+**Option A: Web Frontend (Đơn giản nhất) ⭐ Khuyến nghị cho người mới**
+```bash
+# Terminal 3: Khởi động web server
 cd web
 python start-server.py
+# Hoặc: python -m http.server 8080
+
+# 🌐 Mở browser: http://localhost:8080
 ```
 
-Hoặc:
+**Option B: Python API Server (REST API cho blockchain)**
 ```bash
-cd web
-python -m http.server 8080
+# Terminal 3: Khởi động Python API
+cd python-blockchain-server
+python blockchain_server.py
+# Hoặc trên Windows: START_SERVER.bat
+
+# 🌐 API: http://localhost:8001
+# 📚 API Docs: http://localhost:8001/docs
 ```
 
-### Bước 6: Mở Web Interface
-
-1. Mở browser: http://localhost:8080
-2. Connect MetaMask
-3. Switch sang network **31337** (Hardhat Local)
-4. Nếu chưa có network, MetaMask sẽ tự động thêm
-
-### Bước 7: Test Với 2 Accounts
-
-#### Import Accounts Vào MetaMask:
-
-**Account 0 (Admin):**
-- Private Key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-- Address: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
-
-**Account 1 (User):**
-- Private Key: `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
-- Address: `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`
-
-**Cách import:**
-1. Mở MetaMask
-2. Click icon account → "Import account"
-3. Paste private key → Đặt tên "Admin" hoặc "User"
-
-#### Test Flow:
-
-1. **Switch sang Account "Admin"** → Test mint, update, pause
-2. **Switch sang Account "User"** → Test borrow, return
-3. **Admin withdraw penalty** → Vào Admin tab → Click "Withdraw All Penalty"
-
----
-
-## 📁 Cấu Trúc Dự Án
-
-```
-library-blockchain-kit/
-├── contracts/
-│   ├── BookNFT.sol          # ERC721 NFT cho sách
-│   ├── LibraryCore.sol      # Logic mượn/trả sách
-│   └── EscrowVault.sol      # Quản lý tiền cọc
-├── scripts/
-│   ├── quick-deploy.ts      # Deploy lên localhost
-│   ├── deploy-sepolia.ts    # Deploy lên Sepolia testnet
-│   └── test-with-two-accounts.ts  # Test script
-├── web/
-│   ├── index.html           # Web interface
-│   ├── app.js               # JavaScript logic
-│   ├── style.css            # CSS styling
-│   ├── contracts.json       # Contract addresses
-│   └── start-server.py      # Python web server
-├── hardhat.config.ts        # Hardhat configuration
-└── package.json             # Dependencies
-```
-
----
-
-## 🔧 Cấu Hình
-
-### Hardhat Network (Localhost)
-
-- **RPC URL:** http://127.0.0.1:8545
-- **Chain ID:** 31337
-- **Currency:** ETH
-
-### MetaMask Setup
-
-Khi connect lần đầu, MetaMask sẽ tự động thêm network. Hoặc thêm manual:
-
-- **Network Name:** Hardhat Local
-- **RPC URL:** http://127.0.0.1:8545
-- **Chain ID:** 31337
-- **Currency Symbol:** ETH
-
----
-
-## 💰 Phí & Phạt
-
-- **Cọc mặc định:** 0.1 ETH
-- **Phạt trả muộn:** 0.02 ETH
-- **Phạt làm hỏng/mất sách:** 0.05 ETH
-- **Thời hạn mượn:** 7 ngày
-- **Điểm uy tín:** +1 (trả đúng hạn) / -2 (quá hạn) / -5 (hỏng/mất)
-
----
-
-## 🧪 Test
-
-### Test Script Tự Động
-
+**Option C: Java Backend (Đầy đủ tính năng + Database)**
 ```bash
-npx hardhat run scripts/test-with-two-accounts.ts --network localhost
+# Terminal 3: Khởi động Java Spring Boot backend
+cd csattt
+mvnw.cmd spring-boot:run    # Windows
+# hoặc ./mvnw spring-boot:run  # Linux/Mac
+
+# 🌐 Backend: http://localhost:8081
+# 📝 API: http://localhost:8081/api/blockchain/
 ```
 
-### Test Manual
-
-1. **Admin mint book** → Vào Admin tab → Mint
-2. **User borrow book** → Vào Borrow tab → Borrow
-3. **User return book** → Vào Return tab → Return
-4. **Admin withdraw penalty** → Vào Admin tab → Withdraw All Penalty
-
----
-
-## 🌐 Deploy Lên Production
-
-### Deploy Lên Sepolia Testnet
-
-1. **Tạo file `.env`:**
-```env
-SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
-SEPOLIA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
-```
-
-2. **Deploy contracts:**
+**Option D: Subgraph (Tùy chọn - Cho analytics nâng cao)**
 ```bash
-npx hardhat run scripts/deploy-sepolia.ts --network sepolia
+# Terminal 4: Deploy subgraph (tùy chọn)
+cd subgraph
+npm install
+npm run codegen
+npm run build
+npm run deploy-local
 ```
 
-3. **Deploy web lên Vercel:**
+💡 **Gợi ý:** Bạn có thể chạy nhiều services cùng lúc trong các terminal khác nhau để có trải nghiệm đầy đủ nhất!
+
+### Bước 5: Kết nối MetaMask
+
+1. **Cài đặt MetaMask** extension
+2. **Thêm Hardhat Local Network:**
+   - Network Name: Hardhat Local
+   - RPC URL: http://127.0.0.1:8545
+   - Chain ID: 31337
+   - Currency Symbol: ETH
+3. **Import tài khoản test:**
+   - Private Key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+   - (Tài khoản đầu tiên từ Hardhat với 10,000 ETH)
+
+### Bước 6: Sử dụng ứng dụng
+
+1. **Mở web interface**: http://localhost:8080
+2. **Connect MetaMask** 
+3. **Borrow sách**: Chọn sách và trả tiền cọc (0.1 ETH)
+4. **Return sách**: Trả sách và nhận lại tiền cọc
+5. **Xem reputation**: Theo dõi điểm uy tín của bạn
+
+## 🛠️ Scripts hữu ích
+
+### NPM Scripts (package.json)
 ```bash
-npm i -g vercel
-cd web
-vercel --prod
+# Compile contracts
+npm run compile
+
+# Deploy contracts (full version)
+npm run deploy
+
+# Deploy minimal version (faster)
+npm run deploy-minimal
+
+# Run tests
+npm run test
+
+# Start Hardhat node
+npm run node
+
+# Interact with contracts
+npm run interact
+
+# Verify deployment
+npm run verify
+
+# Test system
+npm run test-system
 ```
 
-**Xem chi tiết:** `DEPLOY_TO_PRODUCTION.md`
+### Utility Scripts
+```bash
+# Verify cấu hình toàn bộ dự án
+node verify-config.js
+
+# Test specific scripts
+npx hardhat run scripts/test-system.ts --network localhost
+npx hardhat run scripts/verify-deployment.ts --network localhost
+npx hardhat run scripts/interact.ts --network localhost
+```
+
+### Backend Scripts
+```bash
+# Java backend
+cd csattt && mvnw.cmd spring-boot:run
+
+# Python API server
+cd python-blockchain-server && python blockchain_server.py
+
+# Web server
+cd web && python start-server.py
+```
+
+## 📁 Cấu trúc thư mục
+
+```
+📦 library-blockchain-kit/
+├── 📄 README.md                 # Tài liệu dự án
+├── 📄 package.json             # Node.js dependencies & scripts
+├── 📄 hardhat.config.ts        # Hardhat configuration
+├── 📄 tsconfig.json            # TypeScript configuration
+├── 📄 verify-config.js         # Script kiểm tra cấu hình
+│
+├── 📂 contracts/               # ⭐ Smart Contracts (Solidity)
+│   ├── BookNFT.sol            # NFT contract cho sách
+│   ├── LibraryCore.sol        # Logic mượn/trả sách chính
+│   ├── LibraryCoreV2.sol      # Version 2 với cải tiến
+│   ├── EscrowVault.sol        # Quản lý tiền cọc
+│   ├── UserProfile.sol        # Hồ sơ người dùng
+│   ├── BookNFT.minimal.sol    # Phiên bản minimal để test nhanh
+│   └── LibraryCore.minimal.sol
+│
+├── 📂 scripts/                 # ⚙️ Deployment & Testing Scripts
+│   ├── deploy.ts              # Deploy contracts chính
+│   ├── deploy-minimal.ts      # Deploy phiên bản minimal
+│   ├── interact.ts            # Script tương tác với contracts
+│   ├── test-system.ts         # Test toàn bộ hệ thống
+│   ├── verify-deployment.ts   # Verify deployment thành công
+│   └── README.md              # Tài liệu chi tiết scripts
+│
+├── 📂 web/                     # 🌐 Web Frontend (HTML/CSS/JS)
+│   ├── index.html             # Giao diện chính
+│   ├── minimal.html           # Giao diện đơn giản
+│   ├── test-profile.html      # Test user profiles
+│   ├── app.js                 # JavaScript logic chính
+│   ├── auth.js                # Authentication
+│   ├── profile.js             # User profile management
+│   ├── blockchain-profile.js  # Blockchain profile interactions
+│   ├── style.css              # Styling
+│   ├── start-server.py        # Python HTTP server cho web
+│   └── contracts.json         # Contract addresses (auto-generated)
+│
+├── 📂 python-blockchain-server/ # 🐍 Python FastAPI Backend
+│   ├── blockchain_server.py   # Main API server
+│   ├── start_server.py        # Startup script
+│   ├── requirements.txt       # Python dependencies
+│   └── START_SERVER.bat       # Windows batch file
+│
+├── 📂 csattt/                  # ☕ Java Spring Boot Backend
+│   ├── pom.xml                # Maven dependencies
+│   ├── mvnw / mvnw.cmd        # Maven wrapper
+│   ├── README.md              # Java backend documentation
+│   ├── test-blockchain.bat    # Test script
+│   ├── create_database.sql    # Database schema
+│   └── src/                   # Java source code
+│       ├── main/java/...      # Application code
+│       └── main/resources/    # Configuration files
+│
+├── 📂 ignition/                # 🔥 Hardhat Ignition Modules
+│   └── modules/
+│       └── Library.ts         # Library deployment module
+│
+├── 📂 subgraph/                # 📊 The Graph Indexing (Optional)
+│   ├── schema.graphql         # GraphQL schema
+│   ├── subgraph.yaml          # Subgraph manifest
+│   └── src/                   # Mapping functions
+│
+├── 📂 test/                    # 🧪 Hardhat Tests
+│   └── Library.ts             # Test suite cho Library system
+│
+├── 📂 artifacts/               # 📦 Compiled Contracts (auto-generated)
+├── 📂 cache/                   # 💾 Hardhat Cache (auto-generated)
+├── 📂 typechain-types/         # 🔧 TypeChain Types (auto-generated)
+└── 📂 node_modules/            # 📚 Dependencies (auto-generated)
+```
+
+### 🗂️ File quan trọng:
+- **Smart Contracts**: `contracts/*.sol` - Logic blockchain chính
+- **Deployment**: `scripts/deploy.ts` - Deploy contracts
+- **Configuration**: `hardhat.config.ts`, `verify-config.js`
+- **Frontend**: `web/index.html`, `web/app.js`
+- **Backend**: `csattt/src/` (Java), `python-blockchain-server/` (Python)
+- **Contract Info**: `web/contracts.json` (generated after deployment)
+
+## 🔧 Troubleshooting
+
+### Lỗi thường gặp:
+
+**1. "Invalid block tag" error:**
+```bash
+# Xóa cache MetaMask và thêm lại network
+# Hoặc restart Hardhat node
+```
+
+**2. "Nonce too high" error:**
+```bash
+# Reset MetaMask account:
+# Settings > Advanced > Reset Account
+```
+
+**3. Contract not deployed:**
+```bash
+# Kiểm tra Hardhat node đang chạy
+# Deploy lại contracts
+npx hardhat run scripts/deploy.ts --network localhost
+```
+
+**4. Port conflicts:**
+```bash
+# Hardhat: 8545
+# Web server: 8080  
+# Java backend: 8081
+# Đảm bảo các port này không bị chiếm dụng
+```
+
+### Verify cấu hình:
+```bash
+node verify-config.js
+```
+
+## 🎮 Demo Flow
+
+1. **Khởi động hệ thống** (5 phút)
+2. **Connect MetaMask** (1 phút)
+3. **Borrow sách đầu tiên** (2 phút)
+4. **Return sách** (1 phút)
+5. **Xem reputation tăng** (30 giây)
+
+**Total demo time: ~10 phút**
+
+## 🔐 Security Notes
+
+- ⚠️ **Private keys trong config chỉ dùng cho development**
+- ⚠️ **Không commit private keys thật vào Git**
+- ⚠️ **Sử dụng environment variables cho production**
+- ⚠️ **Hardhat accounts có 10,000 ETH fake - không có giá trị thật**
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Tạo feature branch
+3. Commit changes
+4. Push và tạo Pull Request
+
+## 🧹 Dự án đã được tối ưu hóa
+
+Các file/folder đã được loại bỏ để giữ dự án gọn gàng:
+- ❌ `admin-dashboard/` - Admin dashboard chưa hoàn thiện
+- ❌ `lib/forge-std/` - Forge standard library (dự án dùng Hardhat)
+- ❌ `foundry.lock` - Foundry lock file (không cần thiết)
+- ❌ `ignition/modules/Counter.ts` - Counter example không dùng
+- ❌ `test/Counter.ts` - Test file cho Counter
+- ❌ `scripts/deploy-with-profiles.ts` - Script deploy trùng lặp
+- ❌ `contracts/*.disabled` - Các contract bị vô hiệu hóa
+
+Các file QUAN TRỌNG được giữ lại:
+- ✅ Tất cả smart contracts chính (BookNFT, LibraryCore, EscrowVault, UserProfile)
+- ✅ Java backend (csattt/) - Không thay đổi
+- ✅ Python blockchain server - Đã cải tiến
+- ✅ Web frontend với đầy đủ tính năng
+- ✅ Deployment và testing scripts
+- ✅ Configuration files
+
+## 📞 Support
+
+Nếu gặp vấn đề:
+1. **Kiểm tra cấu hình**: `node verify-config.js`
+2. **Đọc [Troubleshooting](#-troubleshooting)**
+3. **Xem logs** trong console/terminal
+4. **Kiểm tra** Hardhat node đang chạy
+5. **Verify** contracts đã deploy chưa
+6. Tạo issue trên GitHub nếu vẫn gặp vấn đề
+
+## 📄 License
+
+MIT License - Xem file LICENSE để biết thêm chi tiết.
 
 ---
 
-## 📚 Tài Liệu
-
-- `DEPLOY_TO_PRODUCTION.md` - Hướng dẫn deploy lên production
-- `QUICK_DEPLOY.md` - Hướng dẫn deploy nhanh
-- `TESTING_GUIDE.md` - Hướng dẫn test với 2 accounts
-- `DEPOSIT_FLOW_DIAGRAM.md` - Giải thích flow tiền cọc
-
----
-
-## 🆘 Troubleshooting
-
-### Lỗi "nonce has already been used"
-
-**Giải pháp:**
-1. Kill Hardhat node: `taskkill /F /IM node.exe`
-2. Start lại: `npx hardhat node`
-3. Đợi 5-10 giây
-4. Deploy lại
-
-### Lỗi "Wrong network"
-
-**Giải pháp:**
-- MetaMask phải switch sang network 31337 (Hardhat Local)
-- Hoặc network 11155111 (Sepolia) nếu deploy testnet
-
-### Lỗi "ethers not defined"
-
-**Giải pháp:**
-- Refresh browser (Ctrl + F5)
-- Kiểm tra ethers.js CDN trong `index.html`
-
-### Web không load
-
-**Giải pháp:**
-- Kiểm tra Hardhat node đang chạy
-- Kiểm tra web server đang chạy
-- Kiểm tra `web/contracts.json` có đúng addresses
-
----
-
-## ✅ Checklist Setup
-
-- [ ] `npm install` đã chạy thành công
-- [ ] `npx hardhat compile` thành công
-- [ ] Hardhat node đang chạy (port 8545)
-- [ ] Contracts đã deploy (`web/contracts.json` có addresses)
-- [ ] Web server đang chạy (port 8080)
-- [ ] MetaMask connected và đúng network
-- [ ] Test với 2 accounts (Admin và User)
-
----
-
-## 🎯 Tính Năng Web Interface
-
-### Books Tab
-- ✅ Xem danh sách tất cả sách
-- ✅ Xem chi tiết (status, condition, loan info)
-- ✅ Quick Borrow/Return buttons
-
-### Borrow Tab
-- ✅ Xem thông tin borrower
-- ✅ Chọn sách để mượn
-- ✅ Xem deposit và summary
-
-### Return Tab
-- ✅ Xem thông tin returner
-- ✅ Xem sách đã mượn
-- ✅ Chọn sách để trả
-- ✅ Xem penalty và impact
-
-### Admin Tab
-- ✅ Contract status (Pause/Unpause)
-- ✅ EscrowVault info (balance, withdraw)
-- ✅ Library statistics
-- ✅ Active loans management
-- ✅ Mint new book (với Condition)
-- ✅ Update book status
-- ✅ Update book condition
-
-### Profile Tab
-- ✅ Reputation score
-- ✅ Current loans
-- ✅ Loan history
-
----
-
-## 🔒 Bảo Mật
-
-- ✅ ReentrancyGuard bảo vệ khỏi reentrancy attacks
-- ✅ AccessControl quản lý quyền rõ ràng
-- ✅ EscrowVault tách biệt logic quản lý tiền
-- ✅ Pause/Unpause để tạm dừng khi cần
-
----
-
-## 📝 License
-
-UNLICENSED
-
----
-
-## 👥 Contributors
-
-- Initial development
-- Advanced features implementation
-
----
-
-## 🎉 Sẵn Sàng Sử Dụng!
-
-Sau khi setup xong, bạn có thể:
-- ✅ Mint sách mới
-- ✅ Mượn/trả sách
-- ✅ Quản lý tiền cọc
-- ✅ Xem thống kê
-- ✅ Pause/Unpause contract
-- ✅ Withdraw penalty funds
-
-**Chúc bạn sử dụng vui vẻ!** 🚀
+**🎉 Chúc bạn khám phá thành công hệ thống Library Blockchain!**

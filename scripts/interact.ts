@@ -1,102 +1,81 @@
-import { network } from "hardhat";
+import hre from "hardhat";
+import { readFileSync } from "fs";
+
+const ethers = hre.ethers;
 
 /**
- * Script để tương tác với contracts đã deploy
- * 
- * Địa chỉ contracts từ deployment:
- * - BookNFT: 0x5FbDB2315678afecb367f032d93F642f64180aa3
- * - LibraryCore: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+ * Script tương tác với contracts đã deploy
+ * Dùng để test các chức năng mượn/trả sách
  */
-
 async function main() {
-  console.log("📚 Tương tác với Library Blockchain System\n");
+  console.log("🔧 Interacting with Library Blockchain System...\n");
 
-  // Sử dụng viem từ network như trong test files
-  const { viem } = await network.connect();
-  
-  console.log("📦 Deploying contracts...");
-  const bookNFT = await viem.deployContract("BookNFT");
-  const libraryCore = await viem.deployContract("LibraryCore", [bookNFT.address]);
-
-  console.log("✅ Contracts deployed:");
-  console.log("   BookNFT:", bookNFT.address);
-  console.log("   LibraryCore:", libraryCore.address);
-  console.log("");
-
-  // Authorize LibraryCore to update book status
-  console.log("🔐 Setting up authorization...");
-  await bookNFT.write.setAuthorizedUpdater([libraryCore.address, true]);
-  console.log("   ✅ LibraryCore authorized");
-  console.log("");
-
-  // Mint 3 sách mẫu để demo
-  console.log("📚 Minting sample books...");
-  await bookNFT.write.mintBook(["Lập Trình Blockchain", "Cẩm nang từ A-Z về smart contract!", 5]);
-  await bookNFT.write.mintBook(["Mastering Ethereum", "Advanced guide to building smart contracts", 5]);
-  await bookNFT.write.mintBook(["Solidity Programming", "Learn Solidity from scratch", 4]);
-  console.log("   ✅ Minted 3 books");
-  console.log("");
-
-  // 1. Đọc thông tin sách
-  console.log("📖 Đọc thông tin sách đã mint:");
-  for (let i = 0; i < 3; i++) {
-    const bookInfo = await bookNFT.read.getBookInfo([i]);
-    console.log(`   Book #${i}:`);
-    console.log(`     - Tên: ${bookInfo[0]}`);
-    console.log(`     - Mô tả: ${bookInfo[1]}`);
-    console.log(`     - Trạng thái: ${bookInfo[2]}`);
-    console.log(`     - Ngày tạo: ${new Date(Number(bookInfo[3]) * 1000).toLocaleString()}`);
-    console.log("");
+  // Load contract addresses
+  let addresses;
+  try {
+    addresses = JSON.parse(readFileSync("./web/contracts.json", "utf-8"));
+  } catch (error) {
+    console.error("❌ Cannot load contract addresses. Please deploy first.");
+    process.exit(1);
   }
 
-  // 2. Kiểm tra trạng thái sách
-  console.log("📊 Kiểm tra trạng thái sách:");
-  const status = await bookNFT.read.getBookStatus([0]);
-  console.log(`   Trạng thái Book #0: ${status}`);
-  console.log("   (0=Available, 1=Borrowed, 2=Damaged, 3=Lost, 4=Old, 5=New)");
-  console.log("");
+  // Get signers
+  const [admin, user1, user2] = await ethers.getSigners();
+  console.log("👤 Admin:", admin.address);
+  console.log("👤 User1:", user1.address);
+  console.log("👤 User2:", user2.address);
 
-  // 3. Nếu sách chưa Available, set về Available để mượn được
-  const currentStatus = await bookNFT.read.getBookStatus([0]);
-  if (Number(currentStatus) !== 0) {
-    console.log("🔄 Đang set Book #0 về trạng thái Available...");
-    await bookNFT.write.updateBookStatus([0, 0]);
-    console.log("   ✅ Đã set về Available");
-    console.log("");
+  // Get contracts
+  const bookNFT = await ethers.getContractAt("BookNFT", addresses.bookNFT);
+  const libraryCore = await ethers.getContractAt("LibraryCore", addresses.libraryCore);
+
+  // Test 1: View books
+  console.log("\n📚 Viewing books...");
+  const nextBookId = await bookNFT.nextBookId();
+  console.log(`Total books: ${nextBookId}`);
+
+  for (let i = 0; i < Number(nextBookId); i++) {
+    const bookInfo = await bookNFT.getBookInfo(i);
+    console.log(`\nBook #${i}:`);
+    console.log(`  Name: ${bookInfo.name}`);
+    console.log(`  Status: ${bookInfo.status}`);
+    console.log(`  Condition: ${bookInfo.condition}`);
   }
 
-  // 4. Kiểm tra thông tin loan (nếu có)
-  console.log("📋 Kiểm tra thông tin loan:");
-  const loanInfo = await libraryCore.read.loanInfos([0]);
-  const zeroAddress = "0x0000000000000000000000000000000000000000";
-  if (loanInfo[0] !== zeroAddress) {
-    console.log(`   Book #0 đã được mượn bởi: ${loanInfo[0]}`);
-    console.log(`   Đã trả: ${loanInfo[3]}`);
-  } else {
-    console.log("   Book #0 chưa được mượn");
-  }
-  console.log("");
+  // Test 2: Borrow book
+  console.log("\n📖 User1 borrowing book #0...");
+  const depositAmount = ethers.parseEther("0.1");
+  const borrowTx = await libraryCore.connect(user1).borrowBook(0, { value: depositAmount });
+  await borrowTx.wait();
+  console.log("✅ Book borrowed successfully");
 
-  // 5. Kiểm tra địa chỉ accounts
-  const [account1, account2] = await viem.getWalletClients();
-  console.log("👤 Account 1:", account1.account.address);
-  console.log("👤 Account 2:", account2.account.address);
-  
-  console.log("⭐ Kiểm tra điểm uy tín:");
-  const reputation = await libraryCore.read.userReputation([account2.account.address]);
-  console.log(`   Điểm uy tín của ${account2.account.address}: ${reputation}`);
-  console.log("");
+  // Check loan info
+  const loanInfo = await libraryCore.loanInfos(0);
+  console.log("\n📋 Loan Info:");
+  console.log(`  Borrower: ${loanInfo.borrower}`);
+  console.log(`  Deposit: ${ethers.formatEther(loanInfo.deposit)} ETH`);
+  console.log(`  Due Date: ${new Date(Number(loanInfo.dueDate) * 1000).toLocaleString()}`);
 
-  console.log("✅ Hoàn tất!");
-  console.log("\n💡 Để mượn sách, bạn có thể:");
-  console.log("   1. Mở Hardhat Console: npx hardhat console --network hardhat");
-  console.log("   2. Hoặc chạy script: npx hardhat run scripts/borrow-book.ts --network hardhat");
+  // Test 3: Return book
+  console.log("\n📥 User1 returning book #0...");
+  const returnTx = await libraryCore.connect(user1).returnBook(0, 0); // Status 0 = Available
+  await returnTx.wait();
+  console.log("✅ Book returned successfully");
+
+  // Check reputation
+  const reputation = await libraryCore.getReputation(user1.address);
+  console.log(`\n⭐ User1 reputation: ${reputation}`);
+
+  // Check book status
+  const bookStatus = await bookNFT.getBookStatus(0);
+  console.log(`📖 Book #0 status: ${bookStatus}`);
+
+  console.log("\n🎉 Interaction complete!");
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("❌ Lỗi:", error);
+    console.error("❌ Interaction failed:", error);
     process.exit(1);
   });
-

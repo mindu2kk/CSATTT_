@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Borrow Test</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-connect {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-check {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .btn-borrow {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            grid-column: 1 / -1;
+        }
+        
+        .btn-return {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            grid-column: 1 / -1;
+        }
+        
+        #output {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 100px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .success {
+            color: #28a745;
+        }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .info {
+            color: #17a2b8;
+        }
+        
+        .warning {
+            color: #ffc107;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .badge-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Minimal Borrow Test</h1>
+        <p class="subtitle">Simple test để debug MetaMask cache issues</p>
+        
+        <div class="button-group">
+            <button class="btn-connect" onclick="connect()">
+                🔌 Connect Wallet
+            </button>
+            <button class="btn-check" onclick="checkBlock()">
+                📊 Check Block
+            </button>
+            <button class="btn-borrow" onclick="borrow()">
+                📚 Borrow Book 0
+            </button>
+            <button class="btn-return" onclick="returnBook()">
+                ↩️ Return Book 0
+            </button>
+        </div>
+        
+        <div id="output">
+📝 Instructions:
+1. Click "Check Block" - should show 0-10
+2. Click "Connect Wallet"
+3. Click "Borrow Book 0"
+
+If you see "invalid block tag" error:
+→ MetaMask cache issue!
+→ Remove Localhost network from MetaMask
+→ Re-add it from scratch
+        </div>
+    </div>
+    
+    <script>
+        let provider, signer, libraryCore, bookNFT;
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = {
+                'success': '✅',
+                'error': '❌',
+                'info': 'ℹ️',
+                'warning': '⚠️'
+            }[type] || 'ℹ️';
+            
+            output.innerHTML += `\n[${timestamp}] ${prefix} ${message}`;
+            output.scrollTop = output.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        async function connect() {
+            try {
+                output.innerHTML = '🔄 Connecting...\n';
+                
+                if (!window.ethereum) {
+                    throw new Error('MetaMask not found!');
+                }
+                
+                // Request accounts
+                await ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                
+                const address = await signer.getAddress();
+                const balance = await provider.getBalance(address);
+                
+                log(`Connected: ${address}`, 'success');
+                log(`Balance: ${ethers.utils.formatEther(balance)} ETH`, 'info');
+                
+                // Load contracts
+                const response = await fetch('contracts.json');
+                const contracts = await response.json();
+                
+                log(`Loading contracts...`, 'info');
+                log(`BookNFT: ${contracts.bookNFT}`, 'info');
+                log(`LibraryCore: ${contracts.libraryCore}`, 'info');
+                
+                const libraryCoreAbi = [
+                    "function borrowBook(uint256 bookId) external payable",
+                    "function returnBook(uint256 bookId) external",
+                    "function loanInfos(uint256) view returns (address, uint256, uint256)"
+                ];
+                
+                const bookNFTAbi = [
+                    "function getBook(uint256) view returns (string, string, uint8)",
+                    "function nextBookId() view returns (uint256)"
+                ];
+                
+                libraryCore = new ethers.Contract(
+                    contracts.libraryCore,
+                    libraryCoreAbi,
+                    signer
+                );
+                
+                bookNFT = new ethers.Contract(
+                    contracts.bookNFT,
+                    bookNFTAbi,
+                    provider
+                );
+                
+                // Test connection
+                const nextBookId = await bookNFT.nextBookId();
+                log(`Total books: ${nextBookId}`, 'success');
+                
+                log('✅ Ready to test!', 'success');
+                
+            } catch (error) {
+                log(`Connection failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        async function checkBlock() {
+            try {
+                if (!provider) {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                }
+                
+                const block = await provider.getBlockNumber();
+                log(`Current block: ${block}`, 'info');
+                
+                if (block > 20) {
+                    log(`⚠️ WARNING: Block number is high!`, 'warning');
+                    log(`This suggests MetaMask has cached state.`, 'warning');
+                    log(`Expected: 0-10 for fresh blockchain`, 'warning');
+                    log(`Solution: Remove and re-add Localhost network`, 'warning');
+                } else {
+                    log(`✅ Block number looks good!`, 'success');
+                }
+                
+            } catch (error) {
+                log(`Check failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        async function borrow() {
+            try {
+                if (!libraryCore) {
+                    throw new Error('Please connect wallet first!');
+                }
+                
+                log('🔍 Checking book status...', 'info');
+                const book = await bookNFT.getBook(0);
+                log(`Book: ${book[0]} by ${book[1]}`, 'info');
+                log(`Status: ${book[2] === 0 ? 'Available' : 'Borrowed'}`, 'info');
+                
+                if (book[2] !== 0) {
+                    throw new Error('Book is already borrowed!');
+                }
+                
+                log('📤 Sending borrow transaction...', 'info');
+                const tx = await libraryCore.borrowBook(0, {
+                    value: ethers.utils.parseEther("0.01")
+                });
+                
+                log(`Transaction sent: ${tx.hash}`, 'info');
+                log('⏳ Waiting for confirmation...', 'info');
+                
+                const receipt = await tx.wait();
+                
+                log(`✅ SUCCESS! Book borrowed!`, 'success');
+                log(`Gas used: ${receipt.gasUsed.toString()}`, 'info');
+                log(`Block: ${receipt.blockNumber}`, 'info');
+                
+            } catch (error) {
+                log(`❌ Borrow failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+                
+                // Check for specific errors
+                if (error.message.includes('invalid block tag')) {
+                    log('', 'error');
+                    log('🚨 BLOCK MISMATCH DETECTED!', 'error');
+                    log('MetaMask cache is out of sync.', 'error');
+                    log('', 'error');
+                    log('SOLUTION:', 'warning');
+                    log('1. Open MetaMask', 'warning');
+                    log('2. Click network dropdown', 'warning');
+                    log('3. Find "Localhost 8545"', 'warning');
+                    log('4. Click "..." → Delete network', 'warning');
+                    log('5. Add network again:', 'warning');
+                    log('   - RPC: http://127.0.0.1:8545', 'warning');
+                    log('   - Chain ID: 31337', 'warning');
+                    log('6. Refresh this page', 'warning');
+                }
+            }
+        }
+        
+        async function returnBook() {
+            try {
+                if (!libraryCore) {
+                    throw new Error('Please connect wallet first!');
+                }
+                
+                log('📤 Sending return transaction...', 'info');
+                const tx = await libraryCore.returnBook(0);
+                
+                log(`Transaction sent: ${tx.hash}`, 'info');
+                log('⏳ Waiting for confirmation...', 'info');
+                
+                const receipt = await tx.wait();
+                
+                log(`✅ SUCCESS! Book returned!`, 'success');
+                log(`Gas used: ${receipt.gasUsed.toString()}`, 'info');
+                
+            } catch (error) {
+                log(`❌ Return failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Auto-check block on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.ethereum) {
+                    checkBlock();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

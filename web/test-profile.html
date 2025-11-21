@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Profile System</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .form-group { margin: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        .action-btn { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
+        .primary { background: #27ae60; color: white; }
+        .secondary { background: #95a5a6; color: white; }
+        .setup-card { 
+            max-width: 500px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+        }
+        .profile-display { 
+            max-width: 500px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            background: #f9f9f9; 
+        }
+        .info-item { 
+            margin: 10px 0; 
+            padding: 5px 0; 
+            border-bottom: 1px solid #eee; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Profile System</h1>
+    
+    <div class="setup-card">
+        <h3>📝 Profile Form Test</h3>
+        <form id="testProfileForm">
+            <div class="form-group">
+                <label for="testFullName">👤 Full Name *</label>
+                <input type="text" id="testFullName" name="fullName" required 
+                       placeholder="Enter your full name">
+            </div>
+            
+            <div class="form-group">
+                <label for="testEmail">📧 Email Address *</label>
+                <input type="email" id="testEmail" name="email" required 
+                       placeholder="Enter your email address">
+            </div>
+            
+            <div class="form-group">
+                <label for="testPhone">📱 Phone Number</label>
+                <input type="tel" id="testPhone" name="phone" 
+                       placeholder="Enter your phone number">
+            </div>
+            
+            <div class="form-group">
+                <label for="testAddress">🏠 Address</label>
+                <textarea id="testAddress" name="address" rows="3" 
+                          placeholder="Enter your address"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="testStudentId">🎓 Student/Member ID</label>
+                <input type="text" id="testStudentId" name="studentId" 
+                       placeholder="Enter your student or member ID">
+            </div>
+            
+            <button type="submit" class="action-btn primary">💾 Save Profile</button>
+            <button type="button" id="clearForm" class="action-btn secondary">🗑️ Clear</button>
+        </form>
+    </div>
+
+    <div id="testProfileDisplay" class="profile-display" style="display: none;">
+        <h3>✅ Profile Saved Successfully!</h3>
+        <div class="info-item">
+            <strong>Full Name:</strong>
+            <span id="displayName">-</span>
+        </div>
+        <div class="info-item">
+            <strong>Email:</strong>
+            <span id="displayEmail">-</span>
+        </div>
+        <div class="info-item">
+            <strong>Phone:</strong>
+            <span id="displayPhone">-</span>
+        </div>
+        <div class="info-item">
+            <strong>Address:</strong>
+            <span id="displayAddress">-</span>
+        </div>
+        <div class="info-item">
+            <strong>Student ID:</strong>
+            <span id="displayStudentId">-</span>
+        </div>
+        <div class="info-item">
+            <strong>Wallet Address:</strong>
+            <span id="displayWallet">0x1234...7890 (Test)</span>
+        </div>
+        
+        <button id="editTestProfile" class="action-btn secondary">✏️ Edit Profile</button>
+        <button id="newTestProfile" class="action-btn secondary">🆕 New Profile</button>
+    </div>
+
+    <script>
+        // Test Profile System
+        document.getElementById('testProfileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const profileData = {
+                fullName: formData.get('fullName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                address: formData.get('address'),
+                studentId: formData.get('studentId')
+            };
+            
+            console.log('Test Profile Data:', profileData);
+            
+            // Validate
+            if (!profileData.fullName || !profileData.email) {
+                alert('Please fill in required fields!');
+                return;
+            }
+            
+            // Display profile
+            document.getElementById('displayName').textContent = profileData.fullName || '-';
+            document.getElementById('displayEmail').textContent = profileData.email || '-';
+            document.getElementById('displayPhone').textContent = profileData.phone || '-';
+            document.getElementById('displayAddress').textContent = profileData.address || '-';
+            document.getElementById('displayStudentId').textContent = profileData.studentId || '-';
+            
+            // Show profile display
+            document.querySelector('.setup-card').style.display = 'none';
+            document.getElementById('testProfileDisplay').style.display = 'block';
+            
+            alert('Profile saved successfully!');
+        });
+        
+        document.getElementById('clearForm').addEventListener('click', function() {
+            document.getElementById('testProfileForm').reset();
+        });
+        
+        document.getElementById('editTestProfile').addEventListener('click', function() {
+            // Populate form with current data
+            document.getElementById('testFullName').value = document.getElementById('displayName').textContent;
+            document.getElementById('testEmail').value = document.getElementById('displayEmail').textContent;
+            document.getElementById('testPhone').value = document.getElementById('displayPhone').textContent;
+            document.getElementById('testAddress').value = document.getElementById('displayAddress').textContent;
+            document.getElementById('testStudentId').value = document.getElementById('displayStudentId').textContent;
+            
+            // Show form
+            document.querySelector('.setup-card').style.display = 'block';
+            document.getElementById('testProfileDisplay').style.display = 'none';
+        });
+        
+        document.getElementById('newTestProfile').addEventListener('click', function() {
+            document.getElementById('testProfileForm').reset();
+            document.querySelector('.setup-card').style.display = 'block';
+            document.getElementById('testProfileDisplay').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

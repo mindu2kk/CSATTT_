@@ -6,6 +6,13 @@
     <title>📚 Library Blockchain System</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Authentication Module -->
+    <script src="auth.js"></script>
+    <!-- Profile Management Module -->
+    <script src="blockchain-profile.js"></script>
+    <script src="profile.js"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -15,10 +22,24 @@
         <header>
             <h1>📚 Library Blockchain System</h1>
             <div class="connection-status" id="connectionStatus">
+                <!-- Google Sign In Button (Optional - Hidden if not configured) -->
+                <div id="googleSignIn" style="display: inline-block; margin-right: 10px;"></div>
+                <!-- MetaMask Connect Button (Required for blockchain transactions) -->
                 <button id="connectButton" class="connect-btn">🔗 Connect MetaMask</button>
+                <small style="display: block; color: #6c757d; font-size: 12px; margin-top: 5px;">
+                    💡 Google Sign-In is optional. MetaMask is required for transactions.
+                </small>
                 <div id="accountInfo" class="account-info" style="display: none;">
+                    <div id="userProfile" style="display: flex; align-items: center; gap: 10px;">
+                        <img id="userAvatar" src="" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; display: none;">
+                        <span id="userName" style="font-weight: bold; color: #4a90e2;"></span>
+                        <div id="profileStatus" style="display: none;">
+                            <span class="profile-badge incomplete">📝 Complete Profile</span>
+                        </div>
+                    </div>
                     <span id="accountAddress"></span>
                     <span id="accountBalance"></span>
+                    <button id="logoutButton" class="action-btn" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">🚪 Logout</button>
                 </div>
             </div>
         </header>
@@ -341,22 +362,146 @@
 
             <!-- Profile Tab -->
             <div id="profile" class="tab-content">
-                <h2>👤 User Profile</h2>
-                <div class="profile-info">
-                    <div class="info-card">
-                        <h3>⭐ Reputation Score</h3>
-                        <div id="reputationScore" class="score">Loading...</div>
-                    </div>
-                    <div class="info-card">
-                        <h3>📚 Current Loans</h3>
-                        <div id="currentLoans">Loading...</div>
-                    </div>
-                    <div class="info-card">
-                        <h3>📊 Loan History</h3>
-                        <div id="loanHistory">Loading...</div>
+                <h2>👤 My Profile</h2>
+                
+                <!-- Profile Setup Form (shown when no profile exists) -->
+                <div id="profileSetup" class="profile-setup" style="display: block;">
+                    <div class="setup-card">
+                        <h3>📝 Complete Your Profile</h3>
+                        <p>Please provide your information to link with your MetaMask wallet:</p>
+                        
+                        <form id="profileForm" class="profile-form">
+                            <div class="form-group">
+                                <label for="fullName">👤 Full Name *</label>
+                                <input type="text" id="fullName" name="fullName" required 
+                                       placeholder="Enter your full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">📧 Email Address *</label>
+                                <input type="email" id="email" name="email" required 
+                                       placeholder="Enter your email address">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="phone">📱 Phone Number</label>
+                                <input type="tel" id="phone" name="phone" 
+                                       placeholder="Enter your phone number">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="address">🏠 Address</label>
+                                <textarea id="address" name="address" rows="3" 
+                                          placeholder="Enter your address"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="studentId">🎓 Student/Member ID</label>
+                                <input type="text" id="studentId" name="studentId" 
+                                       placeholder="Enter your student or member ID">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="action-btn primary">💾 Save Profile</button>
+                                <button type="button" id="cancelProfile" class="action-btn secondary">❌ Cancel</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <button id="refreshProfile" class="action-btn">🔄 Refresh Profile</button>
+                
+                <!-- Profile Display (shown when profile exists) -->
+                <div id="profileDisplay" class="profile-display" style="display: none;">
+                    <div class="profile-section">
+                        <h3>🔐 Authentication Status</h3>
+                        <div id="authStatus" class="info-card">
+                            <div class="info-item">
+                                <strong>Google Account:</strong>
+                                <span id="googleStatus">❌ Not connected</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>MetaMask Wallet:</strong>
+                                <span id="metamaskStatus">❌ Not connected</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Blockchain Profile:</strong>
+                                <span id="blockchainStatus">⏳ Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <h3>👤 User Information</h3>
+                            <button id="editProfile" class="action-btn small">✏️ Edit</button>
+                        </div>
+                        <div id="userInfo" class="info-card">
+                            <div class="info-item">
+                                <strong>Full Name:</strong>
+                                <span id="profileName">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Email:</strong>
+                                <span id="profileEmail">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Phone:</strong>
+                                <span id="profilePhone">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Address:</strong>
+                                <span id="profileAddress">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Student/Member ID:</strong>
+                                <span id="profileStudentId">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Wallet Address:</strong>
+                                <span id="profileWallet" class="address-display">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Member Since:</strong>
+                                <span id="profileMemberSince">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h3>⭐ Library Statistics</h3>
+                        <div id="libraryStats" class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalBorrows">0</div>
+                                <div class="stat-label">Books Borrowed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="currentBorrows">0</div>
+                                <div class="stat-label">Currently Borrowed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="profileReputation">0</div>
+                                <div class="stat-label">Reputation Score</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="onTimeReturns">0</div>
+                                <div class="stat-label">On-Time Returns</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h3>📚 My Borrowed Books</h3>
+                        <div id="myBooks" class="books-grid">
+                            <div class="loading">Loading your books...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button id="refreshProfile" class="action-btn">🔄 Refresh Profile</button>
+                    <button id="exportProfile" class="action-btn secondary">📄 Export Data</button>
+                    <button id="testProfile" class="action-btn secondary" onclick="window.profileManager?.testProfileSetup()">🧪 Test Profile</button>
+                    <button id="debugProfile" class="action-btn secondary" onclick="window.profileManager?.debugElements()">🔍 Debug</button>
+                </div>
             </div>
         </main>
 
@@ -364,8 +509,33 @@
             <div class="contract-info">
                 <h4>📋 Contract Information</h4>
                 <div id="contractAddresses">Loading contract addresses...</div>
+                <button onclick="showTestnetModal()" class="action-btn" style="background: #17a2b8; margin-top: 10px;">🆓 Get Free Testnet ETH</button>
             </div>
         </footer>
+    </div>
+    
+    <!-- Testnet ETH Guide Modal -->
+    <div id="testnetModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeTestnetModal()">&times;</span>
+            <h2>🆓 Get Free Testnet ETH</h2>
+            <div class="testnet-guide">
+                <h3>📍 Sepolia Testnet Faucets:</h3>
+                <ul>
+                    <li><a href="https://sepoliafaucet.com/" target="_blank">https://sepoliafaucet.com/</a></li>
+                    <li><a href="https://faucet.quicknode.com/ethereum/sepolia" target="_blank">QuickNode Faucet</a></li>
+                    <li><a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank">Alchemy Faucet</a></li>
+                </ul>
+                <h3>🖥️ Localhost (Hardhat):</h3>
+                <p>✅ Tự động có <strong>10,000 ETH</strong> cho mỗi account!</p>
+                <p>✅ Không cần request từ faucet!</p>
+                <div id="testnetWalletAddress" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                    <strong>Your Wallet Address:</strong>
+                    <div id="testnetAddress" style="word-break: break-all; font-family: monospace;"></div>
+                    <button onclick="copyTestnetAddress()" class="action-btn" style="margin-top: 10px;">📋 Copy Address</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="notification" class="notification"></div>

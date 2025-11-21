@@ -1,0 +1,231 @@
+# The Graph Schema for Library Blockchain System
+
+type Book @entity {
+  id: ID!                           # Token ID
+  name: String!
+  description: String!
+  author: String
+  isbn: String
+  status: BookStatus!
+  condition: BookCondition!
+  owner: User!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  
+  # Statistics
+  borrowCount: BigInt!
+  totalRevenue: BigInt!
+  averageRating: BigDecimal
+  
+  # Relations
+  loans: [Loan!]! @derivedFrom(field: "book")
+  reviews: [Review!]! @derivedFrom(field: "book")
+  reservations: [Reservation!]! @derivedFrom(field: "book")
+  
+  # Images
+  imageBeforeHash: String
+  imageAfterHash: String
+}
+
+enum BookStatus {
+  Available
+  Borrowed
+  Damaged
+  Lost
+  Old
+  New
+}
+
+enum BookCondition {
+  New
+  Good
+  Fair
+  Poor
+}
+
+type User @entity {
+  id: ID!                           # Wallet address
+  reputation: BigInt!
+  totalBorrows: BigInt!
+  totalReturns: BigInt!
+  totalPenalties: BigInt!
+  createdAt: BigInt!
+  lastActiveAt: BigInt!
+  
+  # Relations
+  borrowedBooks: [Loan!]! @derivedFrom(field: "borrower")
+  ownedBooks: [Book!]! @derivedFrom(field: "owner")
+  reviews: [Review!]! @derivedFrom(field: "reviewer")
+  reservations: [Reservation!]! @derivedFrom(field: "user")
+  
+  # Statistics
+  onTimeReturnRate: BigDecimal
+  averageLoanDuration: BigInt
+}
+
+type Loan @entity {
+  id: ID!                           # Transaction hash + log index
+  book: Book!
+  borrower: User!
+  
+  # Loan details
+  borrowedAt: BigInt!
+  dueDate: BigInt!
+  returnedAt: BigInt
+  deposit: BigInt!
+  
+  # Status
+  isReturned: Boolean!
+  isOverdue: Boolean!
+  isDamaged: Boolean!
+  
+  # Penalties
+  latePenalty: BigInt!
+  damagePenalty: BigInt!
+  totalPenalty: BigInt!
+  
+  # Reputation impact
+  reputationChange: BigInt!
+  
+  # Images
+  imageBeforeHash: String
+  imageAfterHash: String
+  
+  # Transaction info
+  transactionHash: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+}
+
+type Review @entity {
+  id: ID!                           # Transaction hash + log index
+  book: Book!
+  reviewer: User!
+  
+  rating: Int!                      # 1-5 stars
+  comment: String
+  verified: Boolean!                # Only borrowers can review
+  
+  upvotes: BigInt!
+  downvotes: BigInt!
+  
+  createdAt: BigInt!
+  updatedAt: BigInt!
+  
+  transactionHash: Bytes!
+}
+
+type Reservation @entity {
+  id: ID!                           # Transaction hash + log index
+  book: Book!
+  user: User!
+  
+  createdAt: BigInt!
+  status: ReservationStatus!
+  notifiedAt: BigInt
+  
+  transactionHash: Bytes!
+}
+
+enum ReservationStatus {
+  Active
+  Notified
+  Fulfilled
+  Cancelled
+}
+
+type DailyStats @entity {
+  id: ID!                           # Date (YYYY-MM-DD)
+  date: BigInt!
+  
+  # Book stats
+  totalBooks: BigInt!
+  availableBooks: BigInt!
+  borrowedBooks: BigInt!
+  
+  # Loan stats
+  newLoans: BigInt!
+  returnedLoans: BigInt!
+  overdueLoans: BigInt!
+  
+  # Financial stats
+  totalDeposits: BigInt!
+  totalPenalties: BigInt!
+  totalRevenue: BigInt!
+  
+  # User stats
+  activeUsers: BigInt!
+  newUsers: BigInt!
+}
+
+type GlobalStats @entity {
+  id: ID!                           # "global"
+  
+  # Totals
+  totalBooks: BigInt!
+  totalLoans: BigInt!
+  totalUsers: BigInt!
+  totalRevenue: BigInt!
+  
+  # Current state
+  availableBooks: BigInt!
+  borrowedBooks: BigInt!
+  activeLoans: BigInt!
+  
+  # Averages
+  averageLoanDuration: BigInt!
+  averageRating: BigDecimal!
+  
+  lastUpdated: BigInt!
+}
+
+type Transaction @entity {
+  id: ID!                           # Transaction hash
+  
+  type: TransactionType!
+  from: User!
+  to: User
+  
+  book: Book
+  amount: BigInt
+  
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+}
+
+enum TransactionType {
+  Mint
+  Borrow
+  Return
+  Transfer
+  Reserve
+  Review
+  Withdraw
+}
+
+type Event @entity {
+  id: ID!                           # Transaction hash + log index
+  
+  type: EventType!
+  book: Book
+  user: User
+  
+  data: String                      # JSON encoded event data
+  
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
+}
+
+enum EventType {
+  BookMinted
+  BookBorrowed
+  BookReturned
+  BookReserved
+  BookReviewed
+  LoanExtended
+  PenaltyCollected
+  ReputationChanged
+}
