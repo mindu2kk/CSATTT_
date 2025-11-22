@@ -1,0 +1,65 @@
+{% extends 'admin/base.html' %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/manage.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="manage-books-page">
+    <h2 class="page-title">🛠 Book Modification Center</h2>
+    <p class="page-subtitle">Search any token ID and update its blockchain state instantly.</p>
+
+    <section class="lookup-section">
+        <form id="bookLookupForm" class="lookup-form">
+            <div>
+                <label for="lookupBookId">Book ID</label>
+                <input type="number" id="lookupBookId" min="0" placeholder="Enter token ID (e.g. 0)" required>
+            </div>
+            <button type="submit" class="primary-btn">🔍 Load Book</button>
+        </form>
+        <div id="lookupFeedback" class="feedback"></div>
+    </section>
+
+    <section class="book-details-card" id="bookDetailsCard">
+        <div class="empty-state">
+            <i class='bx bx-book'></i>
+            <p>Select a book ID to view details</p>
+        </div>
+    </section>
+
+    <section class="actions-grid" id="bookActions" style="display: none;">
+        <div class="action-card">
+            <h3>Status</h3>
+            <label for="managerStatusSelect">New Status</label>
+            <select id="managerStatusSelect">
+                <option value="0">Available</option>
+                <option value="1">Borrowed</option>
+                <option value="2">Damaged</option>
+                <option value="3">Lost</option>
+            </select>
+            <button id="updateStatusBtn" class="primary-btn">♻️ Update Status</button>
+        </div>
+        <div class="action-card">
+            <h3>Condition</h3>
+            <label for="managerConditionSelect">New Condition</label>
+            <select id="managerConditionSelect">
+                <option value="0">New</option>
+                <option value="1">Good</option>
+                <option value="2">Fair</option>
+                <option value="3">Poor</option>
+            </select>
+            <button id="updateConditionBtn" class="primary-btn">📘 Update Condition</button>
+        </div>
+        <div class="action-card">
+            <h3>Refresh</h3>
+            <p>Re-fetch latest data from blockchain to verify updates.</p>
+            <button id="refreshBookBtn" class="secondary-btn">🔄 Refresh Details</button>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin/update-book-status.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin/book-manager.js') }}"></script>
+{% endblock %}
+

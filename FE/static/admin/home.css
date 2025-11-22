@@ -1,0 +1,138 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.header {
+    height: 10vh;
+    margin-left: 25vw;
+    display: flex;
+    justify-content: flex-end; 
+    align-items: center;      
+    padding-right: 20px;
+}
+
+.user {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.user img {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+}
+
+.user p {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.navbar {
+    width: 25vw;
+    height: 100vh;
+    background-color: rgb(32, 46, 71);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    gap: 30px;
+}
+
+.logo {
+    margin-top: 35px;
+    margin-bottom: 50px;
+}
+
+.logo img{
+    width: 35px;
+    height: 35px;
+    filter: brightness(0) invert(1);
+    font-weight: 400;
+}
+
+.ultra-regular {
+    font-family: "Ultra", serif;
+    font-weight: 400;
+    color: white;
+    font-size: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.nav-card {
+    width: 85%;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 18px;
+    color: rgb(200, 205, 220);
+    text-decoration: none;
+    border-radius: 14px;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.nav-card i {
+    font-size: 26px;
+}
+.nav-card .nav-label {
+    font-size: 16px;
+    font-weight: 600;
+}
+.nav-card .nav-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+}
+.nav-card:hover {
+    background: rgba(255,255,255,0.08);
+    color: white;
+    transform: translateX(4px);
+}
+.nav-card.active-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(118, 75, 162, 0.35);
+}
+.nav-card.active-link .nav-desc {
+    color: rgba(255,255,255,0.85);
+}
+
+.main-content {
+    margin-left: 25vw;
+    margin-left: 25vw;
+    width: 75vw;
+    height: 90vh; 
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding: 40px 80px;
+}
+
+.scroll-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgb(32, 46, 71); 
+    color: white; 
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 999;
+    opacity: 1; /* Đổi thành 1 (hiện) */
+    visibility: visible; /* Đổi thành visible (hiện) */
+    transform: translateY(0); /* Đưa về vị trí 0 */
+    transition: all 0.3s ease;
+}

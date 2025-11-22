@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 Library Blockchain System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Authentication Module -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <!-- Profile Management Module -->
+    <script src="{{ url_for('static', filename='js/blockchain-profile.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Library Blockchain System</h1>
+            <div class="connection-status" id="connectionStatus">
+                <!-- Google Sign In Button (Optional - Hidden if not configured) -->
+                <div id="googleSignIn" style="display: inline-block; margin-right: 10px;"></div>
+                <!-- MetaMask Connect Button (Required for blockchain transactions) -->
+                <button id="connectButton" class="connect-btn">🔗 Connect MetaMask</button>
+                <small style="display: block; color: #6c757d; font-size: 12px; margin-top: 5px;">
+                    💡 Google Sign-In is optional. MetaMask is required for transactions.
+                </small>
+                <div id="accountInfo" class="account-info" style="display: none;">
+                    <div id="userProfile" style="display: flex; align-items: center; gap: 10px;">
+                        <img id="userAvatar" src="" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; display: none;">
+                        <span id="userName" style="font-weight: bold; color: #4a90e2;"></span>
+                        <div id="profileStatus" style="display: none;">
+                            <span class="profile-badge incomplete">📝 Complete Profile</span>
+                        </div>
+                    </div>
+                    <span id="accountAddress"></span>
+                    <span id="accountBalance"></span>
+                    <button id="logoutButton" class="action-btn" style="background: #dc3545; padding: 5px 10px; font-size: 12px;">🚪 Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="books">📖 Books</button>
+            <button class="tab-btn" data-tab="borrow">📚 Borrow</button>
+            <button class="tab-btn" data-tab="return">📝 Return</button>
+            <button class="tab-btn" data-tab="admin">⚙️ Admin</button>
+            <button class="tab-btn" data-tab="profile">👤 Profile</button>
+        </nav>
+
+        <main>
+            <!-- Books Tab -->
+            <div id="books" class="tab-content active">
+                <h2>📖 Available Books</h2>
+                <div style="margin-bottom: 20px;">
+                    <button onclick="loadBooks()" class="action-btn" style="background: #17a2b8;">🔄 Refresh Books List</button>
+                </div>
+                <div class="books-grid" id="booksGrid">
+                    <div class="loading">Loading books...</div>
+                </div>
+            </div>
+
+            <!-- Borrow Tab -->
+            <div id="borrow" class="tab-content">
+                <h2>📚 Borrow a Book</h2>
+                
+                <!-- Borrower Information Card -->
+                <div class="form-section" id="borrowerInfoCard" style="display: none;">
+                    <h3>👤 Borrower Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Wallet Address:</label>
+                            <span id="borrowerAddress" class="address-display">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Current Reputation:</label>
+                            <span id="borrowerReputation" class="reputation-display">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Account Balance:</label>
+                            <span id="borrowerBalance" class="balance-display">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Active Loans:</label>
+                            <span id="borrowerActiveLoans" class="loans-display">Loading...</span>
+                        </div>
+                    </div>
+                    <button onclick="refreshBorrowerInfo()" class="action-btn" style="background: #17a2b8; margin-top: 10px;">🔄 Refresh Info</button>
+                </div>
+
+                <!-- Borrow Form -->
+                <div class="form-section">
+                    <h3>📖 Select Book to Borrow</h3>
+                    <div class="form-group">
+                        <label for="borrowBookId">Book ID:</label>
+                        <input type="number" id="borrowBookId" min="0" placeholder="Enter book ID">
+                        <small style="color: #6c757d;">💡 Tip: Check "Books" tab to see available book IDs</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="borrowBookSelect">Or Select from Available Books:</label>
+                        <select id="borrowBookSelect" onchange="selectBookForBorrow(this.value)">
+                            <option value="">-- Select a book --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="book-preview" id="borrowBookPreview" style="display: none;">
+                        <h4>📖 Book Preview:</h4>
+                        <div id="borrowBookDetails"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="depositAmount">Deposit (ETH):</label>
+                        <input type="number" id="depositAmount" value="0.1" step="0.01" min="0.01">
+                        <small style="color: #6c757d;">💰 Required deposit for borrowing this book</small>
+                    </div>
+                    
+                    <div class="borrow-summary" id="borrowSummary" style="display: none;">
+                        <h4>📋 Borrow Summary:</h4>
+                        <div class="summary-item">
+                            <span>Borrower:</span>
+                            <span id="summaryBorrower">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Book ID:</span>
+                            <span id="summaryBookId">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Deposit:</span>
+                            <span id="summaryDeposit">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Reputation Impact:</span>
+                            <span id="summaryReputation">+1 point on return (if good condition)</span>
+                        </div>
+                    </div>
+                    
+                    <button id="borrowButton" class="action-btn">📚 Borrow Book</button>
+                </div>
+                <div id="borrowResult" class="result-section"></div>
+            </div>
+
+            <!-- Return Tab -->
+            <div id="return" class="tab-content">
+                <h2>📝 Return a Book</h2>
+                
+                <!-- Returner Information Card -->
+                <div class="form-section" id="returnerInfoCard" style="display: none;">
+                    <h3>👤 Your Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Wallet Address:</label>
+                            <span id="returnerAddress" class="address-display">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Current Reputation:</label>
+                            <span id="returnerReputation" class="reputation-display">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Your Active Loans:</label>
+                            <span id="returnerActiveLoans" class="loans-display">Loading...</span>
+                        </div>
+                    </div>
+                    <button onclick="refreshReturnerInfo()" class="action-btn" style="background: #17a2b8; margin-top: 10px;">🔄 Refresh Info</button>
+                </div>
+
+                <!-- Your Borrowed Books -->
+                <div class="form-section" id="myBorrowedBooks">
+                    <h3>📚 Your Borrowed Books</h3>
+                    <div id="borrowedBooksList">Loading your borrowed books...</div>
+                </div>
+
+                <!-- Return Form -->
+                <div class="form-section">
+                    <h3>📖 Return a Book</h3>
+                    <div class="form-group">
+                        <label for="returnBookId">Book ID:</label>
+                        <input type="number" id="returnBookId" min="0" placeholder="Enter book ID">
+                        <small style="color: #6c757d;">💡 Tip: Select from "Your Borrowed Books" above</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="returnBookSelect">Or Select from Your Borrowed Books:</label>
+                        <select id="returnBookSelect" onchange="selectBookForReturn(this.value)">
+                            <option value="">-- Select a book to return --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="book-preview" id="returnBookPreview" style="display: none;">
+                        <h4>📖 Loan Details:</h4>
+                        <div id="returnLoanDetails"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="returnStatus">Book Condition:</label>
+                        <select id="returnStatus" onchange="updateReturnImpact()">
+                            <option value="0">📗 Good (Available) - Reputation: +1</option>
+                            <option value="2">📙 Damaged - Reputation: -5, Penalty: 50% deposit</option>
+                            <option value="3">📕 Lost - Reputation: -10, Penalty: 100% deposit</option>
+                        </select>
+                        <small style="color: #6c757d;">⚠️ Returning damaged/lost books will affect your reputation and deposit</small>
+                    </div>
+                    
+                    <div class="return-summary" id="returnSummary" style="display: none;">
+                        <h4>📋 Return Summary:</h4>
+                        <div class="summary-item">
+                            <span>Returner:</span>
+                            <span id="summaryReturner">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Book ID:</span>
+                            <span id="summaryReturnBookId">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Deposit to Return:</span>
+                            <span id="summaryDepositReturn">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Reputation Change:</span>
+                            <span id="summaryReturnReputation">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Penalty (if any):</span>
+                            <span id="summaryPenalty">-</span>
+                        </div>
+                    </div>
+                    
+                    <button id="returnButton" class="action-btn">📝 Return Book</button>
+                </div>
+                <div id="returnResult" class="result-section"></div>
+            </div>
+
+            <!-- Admin Tab -->
+            <div id="admin" class="tab-content">
+                <h2>⚙️ Admin Functions</h2>
+                
+                <!-- Contract Status -->
+                <div class="management-section">
+                    <h4>⚙️ Contract Status</h4>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <span><strong>Status:</strong></span>
+                        <span id="pauseStatus" style="font-weight: bold; font-size: 18px;">Loading...</span>
+                        <button id="pauseButton" onclick="pauseContract()" class="action-btn" style="background: #e74c3c; display: none;">⏸️ Pause</button>
+                        <button id="unpauseButton" onclick="unpauseContract()" class="action-btn" style="background: #27ae60; display: none;">▶️ Unpause</button>
+                    </div>
+                    <div id="escrowVaultInfo"></div>
+                </div>
+
+                <!-- Library Statistics -->
+                <div class="management-section">
+                    <h4>📊 Library Statistics</h4>
+                    <div class="stats-grid" id="libraryStats">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalBooksCount">-</div>
+                            <div class="stat-label">Total Books</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="availableBooksCount">-</div>
+                            <div class="stat-label">Available</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="borrowedBooksCount">-</div>
+                            <div class="stat-label">Borrowed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalDepositsAmount">-</div>
+                            <div class="stat-label">Total Deposits (ETH)</div>
+                        </div>
+                    </div>
+                    <button onclick="refreshAdminStats()" class="action-btn" style="background: #17a2b8;">🔄 Refresh Stats</button>
+                </div>
+
+                <!-- Active Loans Management -->
+                <div class="management-section">
+                    <h4>📋 Active Loans Management</h4>
+                    <div id="activeLoansTable">Loading active loans...</div>
+                </div>
+
+                <div class="form-section">
+                    <h3>➕ Mint New Book</h3>
+                    <div class="form-group">
+                        <label for="bookName">Book Name:</label>
+                        <input type="text" id="bookName" placeholder="Enter book name">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookDescription">Description:</label>
+                        <textarea id="bookDescription" placeholder="Enter book description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookStatus">Initial Status:</label>
+                        <select id="bookStatus">
+                            <option value="0">📗 Available</option>
+                            <option value="4">📘 Old</option>
+                            <option value="5">📒 New</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookCondition">Initial Condition:</label>
+                        <select id="bookCondition">
+                            <option value="0">🆕 New</option>
+                            <option value="1">✅ Good</option>
+                            <option value="2">⚠️ Fair</option>
+                            <option value="3">❌ Poor</option>
+                        </select>
+                    </div>
+                    <button id="mintButton" class="action-btn">➕ Mint Book</button>
+                </div>
+
+                <div class="form-section">
+                    <h3>🔧 Update Book Status</h3>
+                    <div class="form-group">
+                        <label for="updateBookId">Book ID:</label>
+                        <input type="number" id="updateBookId" min="0" placeholder="Enter book ID">
+                        <small style="color: #6c757d;">💡 Use Book ID from "Books" tab</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateBookSelect">Or Select from All Books:</label>
+                        <select id="updateBookSelect" onchange="selectBookForUpdate(this.value)">
+                            <option value="">-- Select a book to update --</option>
+                        </select>
+                    </div>
+                    <div id="updateBookPreview" style="display: none; background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <h4>📖 Current Book Info:</h4>
+                        <div id="updateBookDetails"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newStatus">New Status:</label>
+                        <select id="newStatus">
+                            <option value="0">📗 Available</option>
+                            <option value="1">📚 Borrowed</option>
+                            <option value="2">📙 Damaged</option>
+                            <option value="3">📕 Lost</option>
+                            <option value="4">📘 Old</option>
+                            <option value="5">📒 New</option>
+                        </select>
+                    </div>
+                    <button id="updateStatusButton" class="action-btn">🔧 Update Status</button>
+                </div>
+
+                <div class="form-section">
+                    <h3>🔧 Update Book Condition</h3>
+                    <div class="form-group">
+                        <label for="updateConditionBookId">Book ID:</label>
+                        <input type="number" id="updateConditionBookId" min="0" placeholder="Enter book ID">
+                        <small style="color: #6c757d;">💡 Use Book ID from "Books" tab</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newCondition">New Condition:</label>
+                        <select id="newCondition">
+                            <option value="0">🆕 New</option>
+                            <option value="1">✅ Good</option>
+                            <option value="2">⚠️ Fair</option>
+                            <option value="3">❌ Poor</option>
+                        </select>
+                    </div>
+                    <button onclick="updateBookCondition()" class="action-btn">🔧 Update Condition</button>
+                </div>
+                <div id="adminResult" class="result-section"></div>
+            </div>
+
+            <!-- Profile Tab -->
+            <div id="profile" class="tab-content">
+                <h2>👤 My Profile</h2>
+                
+                <!-- Profile Setup Form (shown when no profile exists) -->
+                <div id="profileSetup" class="profile-setup" style="display: block;">
+                    <div class="setup-card">
+                        <h3>📝 Complete Your Profile</h3>
+                        <p>Please provide your information to link with your MetaMask wallet:</p>
+                        
+                        <form id="profileForm" class="profile-form">
+                            <div class="form-group">
+                                <label for="fullName">👤 Full Name *</label>
+                                <input type="text" id="fullName" name="fullName" required 
+                                       placeholder="Enter your full name">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">📧 Email Address *</label>
+                                <input type="email" id="email" name="email" required 
+                                       placeholder="Enter your email address">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="phone">📱 Phone Number</label>
+                                <input type="tel" id="phone" name="phone" 
+                                       placeholder="Enter your phone number">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="address">🏠 Address</label>
+                                <textarea id="address" name="address" rows="3" 
+                                          placeholder="Enter your address"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="studentId">🎓 Student/Member ID</label>
+                                <input type="text" id="studentId" name="studentId" 
+                                       placeholder="Enter your student or member ID">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="action-btn primary">💾 Save Profile</button>
+                                <button type="button" id="cancelProfile" class="action-btn secondary">❌ Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Profile Display (shown when profile exists) -->
+                <div id="profileDisplay" class="profile-display" style="display: none;">
+                    <div class="profile-section">
+                        <h3>🔐 Authentication Status</h3>
+                        <div id="authStatus" class="info-card">
+                            <div class="info-item">
+                                <strong>Google Account:</strong>
+                                <span id="googleStatus">❌ Not connected</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>MetaMask Wallet:</strong>
+                                <span id="metamaskStatus">❌ Not connected</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Blockchain Profile:</strong>
+                                <span id="blockchainStatus">⏳ Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <div class="section-header">
+                            <h3>👤 User Information</h3>
+                            <button id="editProfile" class="action-btn small">✏️ Edit</button>
+                        </div>
+                        <div id="userInfo" class="info-card">
+                            <div class="info-item">
+                                <strong>Full Name:</strong>
+                                <span id="profileName">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Email:</strong>
+                                <span id="profileEmail">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Phone:</strong>
+                                <span id="profilePhone">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Address:</strong>
+                                <span id="profileAddress">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Student/Member ID:</strong>
+                                <span id="profileStudentId">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Wallet Address:</strong>
+                                <span id="profileWallet" class="address-display">-</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Member Since:</strong>
+                                <span id="profileMemberSince">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h3>⭐ Library Statistics</h3>
+                        <div id="libraryStats" class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalBorrows">0</div>
+                                <div class="stat-label">Books Borrowed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="currentBorrows">0</div>
+                                <div class="stat-label">Currently Borrowed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="profileReputation">0</div>
+                                <div class="stat-label">Reputation Score</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="onTimeReturns">0</div>
+                                <div class="stat-label">On-Time Returns</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h3>📚 My Borrowed Books</h3>
+                        <div id="myBooks" class="books-grid">
+                            <div class="loading">Loading your books...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button id="refreshProfile" class="action-btn">🔄 Refresh Profile</button>
+                    <button id="exportProfile" class="action-btn secondary">📄 Export Data</button>
+                    <button id="testProfile" class="action-btn secondary" onclick="window.profileManager?.testProfileSetup()">🧪 Test Profile</button>
+                    <button id="debugProfile" class="action-btn secondary" onclick="window.profileManager?.debugElements()">🔍 Debug</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="contract-info">
+                <h4>📋 Contract Information</h4>
+                <div id="contractAddresses">Loading contract addresses...</div>
+                <button onclick="showTestnetModal()" class="action-btn" style="background: #17a2b8; margin-top: 10px;">🆓 Get Free Testnet ETH</button>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Testnet ETH Guide Modal -->
+    <div id="testnetModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeTestnetModal()">&times;</span>
+            <h2>🆓 Get Free Testnet ETH</h2>
+            <div class="testnet-guide">
+                <h3>📍 Sepolia Testnet Faucets:</h3>
+                <ul>
+                    <li><a href="https://sepoliafaucet.com/" target="_blank">https://sepoliafaucet.com/</a></li>
+                    <li><a href="https://faucet.quicknode.com/ethereum/sepolia" target="_blank">QuickNode Faucet</a></li>
+                    <li><a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank">Alchemy Faucet</a></li>
+                </ul>
+                <h3>🖥️ Localhost (Hardhat):</h3>
+                <p>✅ Tự động có <strong>10,000 ETH</strong> cho mỗi account!</p>
+                <p>✅ Không cần request từ faucet!</p>
+                <div id="testnetWalletAddress" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                    <strong>Your Wallet Address:</strong>
+                    <div id="testnetAddress" style="word-break: break-all; font-family: monospace;"></div>
+                    <button onclick="copyTestnetAddress()" class="action-btn" style="margin-top: 10px;">📋 Copy Address</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner">⏳ Processing transaction...</div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+

@@ -1,0 +1,47 @@
+{% extends 'admin/base.html' %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/category.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="categoryRoot" style="padding: 30px;">
+    <div style="text-align: center; color: #666; padding: 60px;">
+        <i class='bx bx-loader-alt bx-spin' style="font-size: 48px;"></i>
+        <p style="margin-top: 12px;">Loading categories...</p>
+                </div>
+            </div>
+
+<!-- Book Details Overlay -->
+<div class="overlay-backdrop" id="book-details-overlay" style="display:none;">
+            <div class="modal-container">
+        <span class="modal-close-button" onclick="this.closest('.overlay-backdrop').style.display='none'">&times;</span>
+                <h3 class="modal-title">Book Details</h3>
+                <form class="modal-form" id="book-details-form">
+                    <div class="form-group form-group-book-id">
+                <label for="modal-book-id">Book ID</label>
+                <input type="text" id="modal-book-id" readonly>
+                    </div>
+                    <div class="form-group">
+                <label for="modal-book-name">Book Name</label>
+                <input type="text" id="modal-book-name">
+                    </div>
+                    <div class="form-group">
+                <label for="modal-book-description">Description</label>
+                <textarea id="modal-book-description" rows="5"></textarea>
+                    </div>
+                    <div class="form-group">
+                <label for="modal-book-price">Reference Price</label>
+                <input type="text" id="modal-book-price">
+                    </div>
+                    <div class="form-group-button">
+                <button type="button" class="save-button" onclick="alert('Please use Modify page for full edits.')">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin/category-blockchain.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin/update-book-status.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/header.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+    <!-- Ethers.js for blockchain -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        /* Wallet Widget Styles */
+        .wallet-widget {
+            display: flex;
+            align-items: center;
+        }
+        .wallet-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .wallet-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .wallet-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+        }
+        .wallet-address {
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        .wallet-address:hover {
+            color: #764ba2;
+        }
+        .wallet-balance {
+            font-size: 11px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="{{ url_for('home') }}">
+                <h2 class="ultra-regular"><img src="{{ url_for('get_model_image', filename='BookOpen.png') }}" alt="logo">Bookstore</h2>
+            </a>
+        </div>
+        <div class="search">
+            <input type="text" placeholder="Type the name of the book or author..." id="search-input">
+            <i class='bx  bx-search' id="search-icon"></i> 
+        </div>
+        <div class="option-only">
+            <!-- MetaMask Wallet Widget -->
+            <div id="walletWidget" class="tooltip wallet-widget" style="margin-right: 10px;">
+                <button id="connectWalletBtn" class="wallet-btn" onclick="connectMetaMask()">
+                    <i class='bx bx-wallet'></i>
+                    <span class="wallet-text">Connect</span>
+                </button>
+                <div id="walletInfo" class="wallet-info" style="display: none;">
+                    <div class="wallet-address" id="walletAddress" title="Click to copy" onclick="copyWalletAddress()">
+                        0x0000...0000
+                    </div>
+                    <div class="wallet-balance" id="walletBalance">
+                        0.0000 ETH
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tooltip">
+                <i class='bx bx-bell'></i>
+                <div class="notification-panel">
+                    <p class="panel-header">You have received new notifications</p>
+                    <div class="items-scroll">
+                        <div class="items">
+                            <div class="notification-item">Notification 1...</div>
+                            <div class="notification-item">Notification 2...</div>
+                            <div class="notification-item">Notification 3...</div>
+                            <div class="notification-item">Notification 4...</div>
+                            <div class="notification-item">Notification 1...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="{{ url_for('cart') }}">
+                <div class="tooltip">
+                    <i class='bx bx-cart'></i>
+                    <span class="tooltip-text">Cart</span>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('account') }}">
+                <div class="tooltip">
+                    <i class='bx bx-user'></i>
+                    <span class="tooltip-text">My Account</span>
+                </div>
+            </a>
+        </div>
+    </header>
+</body>
+</html>

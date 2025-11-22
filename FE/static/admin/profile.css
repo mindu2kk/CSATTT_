@@ -1,0 +1,87 @@
+.profile-container {
+    width: 100%;
+    margin: 0 auto;   
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+.profile-title {
+    font-family: "Unica One", sans-serif;
+    color: black;
+    font-weight: 400;
+    font-size: 24px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    cursor: default;
+}
+
+.profile-divider {
+    border: 0;
+    height: 1px;
+    background-color: gray;
+    margin-bottom: 40px;
+    width: 100%;
+}
+
+.profile-form {
+    max-width: 600px; 
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px; 
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+}
+
+.form-group label {
+    font-size: 16px;
+    color: black;
+    flex-basis: 200px;
+    flex-shrink: 0;   
+    text-align: right; 
+    padding-right: 20px;
+}
+
+.form-group input {
+    flex-grow: 1;
+    padding: 12px 20px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 25px; 
+    outline: none; 
+    transition: border-color 0.2s;
+}
+
+.form-group input:not(:read-only):focus {
+    border-color: rgb(32, 46, 71); 
+}
+
+.form-group input:read-only {
+    background-color: #f4f4f4;
+    cursor: not-allowed;
+}
+
+.form-group-button {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.save-button {
+    padding: 12px 35px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: rgb(32, 46, 71);
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.save-button:hover {
+    background-color: rgb(69, 85, 113); 
+}

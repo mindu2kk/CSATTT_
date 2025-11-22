@@ -1,0 +1,50 @@
+{% extends 'admin/base.html' %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/invoice.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="invoiceRoot" style="padding: 30px;">
+    <div style="text-align: center; color: #666; padding: 60px;">
+        <i class='bx bx-loader-alt bx-spin' style="font-size: 48px;"></i>
+        <p style="margin-top: 12px;">Loading invoices...</p>
+                </div>
+            </div>
+
+<div class="overlay-backdrop" id="invoice-details-overlay" style="display:none;">
+            <div class="modal-container">
+        <span class="modal-close-button" onclick="this.closest('.overlay-backdrop').style.display='none'">&times;</span>
+                <h3 class="modal-title">Invoice Details</h3>
+        <div class="modal-form">
+                    <div class="form-group">
+                <label>Borrower</label>
+                        <input type="text" id="modal-invoice-user" readonly>
+                    </div>
+                    <div class="form-group">
+                <label>Book</label>
+                        <input type="text" id="modal-invoice-book" readonly>
+                    </div>
+                    <div class="form-group">
+                <label>Deposit</label>
+                        <input type="text" id="modal-invoice-price" readonly>
+                    </div>
+                    <div class="form-group">
+                <label>Borrowed Date</label>
+                <input type="text" id="modal-invoice-startdate" readonly>
+                    </div>
+                    <div class="form-group">
+                <label>Due Date</label>
+                <input type="text" id="modal-invoice-enddate" readonly>
+                    </div>
+                    <div class="form-group">
+                <label>Status</label>
+                        <div id="modal-invoice-status" class="status-badge"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin/invoice-blockchain.js') }}"></script>
+{% endblock %}

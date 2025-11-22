@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/footer.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    <footer class="contact">
+        <div class="address-contact">
+            <img src="{{ url_for('get_model_image', filename='address.png') }}" alt="logo" style="width: 70px;">
+            <div>
+                <p>Address: 54 Tran Phu, Mo Lao, Ha Dong, Hanoi</p>
+                <p>Tel: +84123456789</p>
+            </div>
+        </div>
+        <div class="welcome">
+            <img src="{{ url_for('get_model_image', filename='welcome.png') }}" alt="logo" style="width: 150px;">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <p style="font-weight: bold;">Bookstore</p>
+                <p>Nơi kết nối tri thức và đam mê đọc sách</p>
+            </div>
+        </div>
+        <div>
+            <p style="display: flex; justify-content: center;">Contact us:</p>
+            <div class="logo-contact">
+                <img src="{{ url_for('get_model_image', filename='logo_fb.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_tn.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_ins.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_tw.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_email.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_dienthoai.png') }}" alt="logo" style="width: 35px;">
+                <img src="{{ url_for('get_model_image', filename='logo_zalo.png') }}" alt="logo" style="width: 35px;">
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

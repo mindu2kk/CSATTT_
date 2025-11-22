@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@latest/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/account.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'user/header.html' %}
+
+    <div class="content">
+        <div class="sidebar">
+            <div class="user">
+                <img src="{{ url_for('get_model_image', filename='anh hoc.jpeg') }}" alt="Ảnh học">
+                <p>username</p>
+            </div>
+            <button class="profile" id="profileBtn">
+                <i class='bx bx-user'></i> 
+                <p>My Profile</p>
+            </button>
+            <button class="order" id="orderBtn">
+                <i class='bx bx-receipt'></i> 
+                <p>My Order</p>
+            </button>
+        </div>
+        <div class="main-content">
+            <div class="scroll-wrapper">
+                <div class="main-profile" id="profileContent" style="display: {% if active_tab == 'profile' %}flex{% else %}none{% endif %};">
+                    <div class="in4">
+                        <p class="label">Tên đăng nhập</p>
+                        <p class="value">admin123</p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Tên</p>
+                        <p class="value">Nguyen Van A</p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Email</p>
+                        <p class="value">abc@gmail.com</p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Số điện thoại</p>
+                        <p class="value">0123456789</p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Giới tính</p>
+                        <p class="value">
+                            <label>
+                                <input type="radio" name="gender" value="male"> Male
+                            </label>
+                            <label>
+                                <input type="radio" name="gender" value="female" checked style="margin-left: 50px;"> Female
+                            </label>
+                        </p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Ngày sinh</p>
+                        <p class="value">01/12/2000</p>
+                    </div>
+                    <div class="in4">
+                        <p class="label">Your coin</p>
+                        <p class="value">
+                            <span style="margin-right: 5px;">123</span>
+                            <img src="{{ url_for('get_model_image', filename='xu.png') }}" alt="logo">
+                        </p>
+                    </div>
+                </div>
+                <div class="main-order" id="orderContent" style="display: {% if active_tab == 'order' %}flex{% else %}none{% endif %};">
+                    <div class="book">
+                        <div class="bia">
+                            <img src="{{ url_for('get_model_image', filename='muado.jpg') }}" alt="logo">
+                            <div class="details">
+                                <h4>Book Name</h4>
+                                <p>Author name</p>
+                            </div>
+                        </div>
+                        <div class="action">
+                            <p class="price">$30.00</p>
+                            <div class="status">
+                                <span class="status-dot"></span>
+                                <span class="status-text">Trả đúng hạn</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay-backdrop" id="smart-contract-overlay">
+        <div class="overlay-content-box">
+            
+            <span class="close-overlay-icon" id="close-overlay-btn">&times;</span> 
+            
+            <h2>Smart contract</h2>
+            
+            <div class="contract-details">
+                <div class="contract-column">
+                    <div class="detail-item">Bên cho mượn (bên A):<br><strong>Thư viện Bookstore</strong></div>
+                    <div class="detail-item">Tên sách: Cây cam ngọt của tôi</div>
+                    <div class="detail-item">Ngày mượn: 7/11/2025</div>
+                    <div class="detail-item">Hình ảnh trước mượn: </div>
+                    <div class="detail-item">Số lượng: 2</div>
+                </div>
+                
+                <div class="contract-column">
+                    <div class="detail-item">Bên mượn (bên B):<br><strong>Bà Nguyễn Thị Lệ</strong></div>
+                    <div class="detail-item">ID sách: BOOK123 (new 99%)</div>
+                    <div class="detail-item">Ngày trả: 8/12/2025</div>
+                    <div class="detail-item">Hình ảnh sau mượn: </div>
+                    <div class="detail-item money">Tiền đặt cọc: $2000</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'user/footer.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/shared/status-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/return-book.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/extend-loan.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/reserve-book.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/report-lost.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/reputation-display.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/account-blockchain.js') }}"></script>
+    
+    <script>
+        const profileBtn = document.getElementById('profileBtn');
+        const orderBtn = document.getElementById('orderBtn');
+        const profileContent = document.getElementById('profileContent');
+        const orderContent = document.getElementById('orderContent');
+        let currentRating = 0;
+
+        function showTab(tabName) {
+            if (tabName === 'profile') {
+                profileContent.style.display = 'flex';
+                orderContent.style.display = 'none';
+                profileBtn.classList.add('active');
+                orderBtn.classList.remove('active');
+                history.pushState(null, '', '/account/profile');
+            } else if (tabName === 'order') {
+                profileContent.style.display = 'none';
+                orderContent.style.display = 'flex';
+                orderBtn.classList.add('active');
+                profileBtn.classList.remove('active');
+                history.pushState(null, '', '/account/order');
+                
+                // ✅ CRITICAL FIX: Load borrowed books when order tab is shown
+                if (window.walletState && window.walletState.isConnected && typeof loadBorrowedBooks === 'function') {
+                    setTimeout(async () => {
+                        try {
+                            await loadBorrowedBooks(window.walletState.address);
+                        } catch (error) {
+                            console.error('Error loading borrowed books:', error);
+                        }
+                    }, 300);
+                }
+            }
+        }
+        
+        profileBtn.addEventListener('click', function() {
+            showTab('profile');
+        });
+
+        orderBtn.addEventListener('click', function() {
+            showTab('order');
+        });
+        
+        // Check URL params for active_tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTabFromUrl = urlParams.get('active_tab');
+        const activeTab = activeTabFromUrl || '{{ active_tab }}' || 'profile';
+        
+        // Initialize tabs based on URL or default
+        if (activeTab === 'order') {
+            // Show order tab
+            showTab('order');
+        } else {
+            // Show profile tab
+            showTab('profile');
+        }
+        
+        // ✅ CRITICAL FIX: Load blockchain data after tabs are set up
+        // Wait longer to ensure wallet.js has loaded
+        setTimeout(() => {
+            if (typeof loadAccountInfo === 'function') {
+                loadAccountInfo();
+            } else {
+                // If function not available yet, wait a bit more
+                setTimeout(() => {
+                    if (typeof loadAccountInfo === 'function') {
+                        loadAccountInfo();
+                    }
+                }, 1000);
+            }
+        }, 1000);
+
+        const allStatusElements = document.querySelectorAll('.status');
+
+        allStatusElements.forEach(statusEl => {
+            const dotElement = statusEl.querySelector('.status-dot');
+            const textElement = statusEl.querySelector('.status-text');
+
+            if (dotElement && textElement) {
+                const statusText = textElement.textContent.trim();
+                switch (statusText) {
+                    case 'Trả đúng hạn':
+                        dotElement.style.backgroundColor = '#28a745'; 
+                        textElement.style.color = '#28a745';
+                        statusEl.style.backgroundColor = '#eaf6ec'; 
+                        break;
+                        
+                    case 'Trả muộn':
+                        dotElement.style.backgroundColor = '#dc3545';
+                        textElement.style.color = '#dc3545';
+                        statusEl.style.backgroundColor = '#fbebee';
+                        break;
+                        
+                    case 'Chưa trả':
+                        dotElement.style.backgroundColor = '#ffc107'; 
+                        textElement.style.color = '#d89e00'; 
+                        statusEl.style.backgroundColor = '#fff8e1';
+                        break;
+                }
+            }
+        });
+
+        const overlay = document.getElementById('smart-contract-overlay');
+        const closeOverlayBtn = document.getElementById('close-overlay-btn');
+        const allBooksInOrder = document.querySelectorAll('.main-order .book');
+        function showOverlay() {
+            if (overlay) overlay.style.display = 'flex';
+        }
+        function hideOverlay() {
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        allBooksInOrder.forEach(book => {
+            book.style.cursor = 'pointer'; 
+            book.addEventListener('click', showOverlay);
+        });
+
+        if (closeOverlayBtn) {
+            closeOverlayBtn.addEventListener('click', hideOverlay);
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    hideOverlay();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

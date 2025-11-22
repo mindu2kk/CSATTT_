@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://cdn.boxicons.com/3.0.3/fonts/basic/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/home.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+    <!-- Blockchain Integration -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/blockchain-admin.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/admin-integration.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/category-blockchain.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/invoice-blockchain.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/admin-pages.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/admin-staff-blockchain.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/update-book-status.js') }}"></script>
+</head>
+<body>
+    <div class="header">
+        <!-- MetaMask Widget -->
+        <div id="walletWidget" style="margin-right: 20px;">
+            <button id="connectWalletBtn" class="wallet-btn" onclick="connectMetaMask()" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                <i class='bx bx-wallet'></i>
+                <span class="wallet-text">Connect</span>
+            </button>
+            <div id="walletInfo" class="wallet-info" style="display: none; flex-direction: column; gap: 4px; padding: 8px 12px; background: white; border: 2px solid #667eea; border-radius: 12px;">
+                <div class="wallet-address" id="walletAddress" title="Click to copy" onclick="copyWalletAddress()" style="font-size: 12px; font-weight: 600; color: #667eea; cursor: pointer; font-family: monospace;">
+                    0x0000...0000
+                </div>
+                <div class="wallet-balance" id="walletBalance" style="font-size: 11px; color: #666;">
+                    0.0000 ETH
+                </div>
+            </div>
+        </div>
+        
+        <div class="user" id="profile-trigger" style="cursor: pointer;">
+            <img src="{{ url_for('get_model_image', filename='anh hoc.jpeg') }}" alt="Ảnh học">
+            <p>username</p>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <div class="logo">
+            <h2 class="ultra-regular"><img src="{{ url_for('get_model_image', filename='BookOpen.png') }}" alt="logo">Bookstore</h2>
+        </div>
+        <div class="category">
+            <i class='bx  bx-categories'    ></i>  
+            <p>Category management</p>
+        </div>
+        <div class="invoice">
+            <i class='bx  bx-receipt'    ></i> 
+            <p>Invoice Management</p>
+        </div>
+        <div class="adminnstaff">
+            <i class='bx  bx-community'    ></i> 
+            <p>Admin and Staff accounts</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+    </div>
+
+    <button id="scrollToTopBtn" class="scroll-to-top">
+        <i class='bx bx-chevrons-up'></i>
+    </button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const mainContentContainer = document.querySelector('.main-content');
+            const profileTrigger = document.getElementById('profile-trigger');
+            const categoryTrigger = document.querySelector('.category');
+            const invoiceTrigger = document.querySelector('.invoice');
+            const adminTrigger = document.querySelector('.adminnstaff');
+            const navLinks = [categoryTrigger, invoiceTrigger, adminTrigger];
+
+            const overlayId = 'book-details-overlay';
+            const modalFileUploadId = 'modal-file-upload';
+            
+            function loadContent(url) {
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.text();
+                    })
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        doc.head.querySelectorAll('link[rel="stylesheet"]').forEach(cssLink => {
+                            const cssUrl = cssLink.href;
+                            if (!document.querySelector(`link[href="${cssUrl}"]`)) {
+                                const newLink = document.createElement('link');
+                                newLink.rel = 'stylesheet';
+                                newLink.href = cssUrl;
+                                document.head.appendChild(newLink);
+                            }
+                        });
+                        const newContent = doc.querySelector('.main-content').innerHTML;
+                        mainContentContainer.innerHTML = newContent;
+                    })
+                    .catch(error => {
+                        console.error('Lỗi khi tải nội dung:', error);
+                        mainContentContainer.innerHTML = '<p>Không thể tải nội dung. Vui lòng thử lại.</p>';
+                    });
+            }
+
+            function setActiveLink(clickedLink) {
+                navLinks.forEach(link => link.classList.remove('active-link'));
+                if (clickedLink) {
+                    clickedLink.classList.add('active-link');
+                }
+            }
+
+            function refreshActiveView(reason) {
+                if (categoryTrigger.classList.contains('active-link')) {
+                    loadCategoryFromBlockchain();
+                } else if (invoiceTrigger.classList.contains('active-link')) {
+                    loadInvoiceFromBlockchain();
+                } else if (adminTrigger.classList.contains('active-link')) {
+                    if (typeof loadAdminStaffAccounts === 'function') {
+                        loadAdminStaffAccounts();
+                    } else if (typeof loadAdminStaffFromBlockchain === 'function') {
+                        loadAdminStaffFromBlockchain();
+                    }
+                }
+            }
+
+            profileTrigger.addEventListener('click', function() {
+                setActiveLink(null); 
+                loadContent("{{ url_for('profile') }}");
+            });
+            categoryTrigger.addEventListener('click', function() {
+                setActiveLink(categoryTrigger);
+                // Load category from blockchain instead of FE route
+                if (typeof loadBooksByCategory === 'function') {
+                    loadBooksByCategory();
+                } else {
+                    // Fallback: load blockchain category data
+                    loadCategoryFromBlockchain();
+                }
+            });
+            invoiceTrigger.addEventListener('click', function() {
+                setActiveLink(invoiceTrigger);
+                // Load invoice from blockchain instead of FE route
+                if (typeof loadBlockchainInvoices === 'function') {
+                    loadBlockchainInvoices();
+                } else {
+                    // Fallback: load blockchain invoice data
+                    loadInvoiceFromBlockchain();
+                }
+            });
+            adminTrigger.addEventListener('click', function() {
+                setActiveLink(adminTrigger);
+                // Load admin/staff from blockchain instead of FE route
+                if (typeof loadAdminStaffAccounts === 'function') {
+                    loadAdminStaffAccounts();
+                } else {
+                    // Fallback: load blockchain admin/staff data
+                    loadAdminStaffFromBlockchain();
+                }
+            });
+
+            document.addEventListener('click', function(event) {
+                if (event.target.classList.contains('modal-close-button')) {
+                    event.target.closest('.overlay-backdrop').style.display = 'none';
+                }
+                if (event.target.classList.contains('overlay-backdrop')) {
+                    event.target.style.display = 'none';
+                }
+            });
+            
+            mainContentContainer.addEventListener('click', function(event) {
+                
+                const categoryRow = event.target.closest('.category-table tbody tr');
+                if (categoryRow) {
+                    const overlay = document.getElementById(overlayId);
+                    overlay.querySelector('.modal-title').textContent = 'Book Details';
+                    overlay.querySelector('.save-button').textContent = 'Save';
+                    overlay.querySelector('.form-group-book-id').style.display = 'flex'; 
+
+                    document.getElementById('modal-book-id').value = categoryRow.cells[1].textContent.trim();
+                    document.getElementById('modal-book-name').value = categoryRow.cells[2].textContent.trim();
+                    document.getElementById('modal-book-image-preview').src = categoryRow.cells[3].querySelector('img').src;
+                    document.getElementById('modal-book-price').value = categoryRow.cells[4].textContent.trim();
+                    document.getElementById('modal-book-newness').value = "90%"; 
+                    document.getElementById('modal-book-description').value = "";
+                    document.getElementById('file-name-display').value = "";
+                    document.getElementById(modalFileUploadId).value = null;
+
+                    overlay.style.display = 'flex';
+                }
+
+                const addIcon = event.target.closest('#add-book-trigger');
+                if (addIcon) {
+                    const overlay = document.getElementById(overlayId);
+                    overlay.querySelector('.modal-title').textContent = 'Add New Book';
+                    overlay.querySelector('.save-button').textContent = 'Add';
+                    overlay.querySelector('.form-group-book-id').style.display = 'none'; 
+
+                    document.getElementById('modal-book-id').value = '';
+                    document.getElementById('modal-book-name').value = '';
+                    document.getElementById('modal-book-price').value = '';
+                    document.getElementById('modal-book-newness').value = '90%';
+                    document.getElementById('modal-book-description').value = '';
+                    document.getElementById('modal-book-image-preview').src = ''; 
+                    document.getElementById('file-name-display').value = '';
+                    document.getElementById(modalFileUploadId).value = null;
+
+                    overlay.style.display = 'flex';
+                }
+
+                const invoiceRow = event.target.closest('.invoice-table tbody tr');
+                if (invoiceRow) {
+                    const userName = invoiceRow.cells[1].textContent.trim();
+                    const bookName = invoiceRow.cells[2].textContent.trim();
+                    const price = invoiceRow.cells[4].textContent.trim();
+                    const status = invoiceRow.dataset.status; 
+
+                    document.getElementById('modal-invoice-user').value = userName;
+                    document.getElementById('modal-invoice-book').value = bookName;
+                    document.getElementById('modal-invoice-price').value = price;
+                    
+                    const statusBadge = document.getElementById('modal-invoice-status');
+                    statusBadge.className = 'status-badge'; 
+                    statusBadge.classList.add(status); 
+
+                    if (status === 'chua-tra') {
+                        statusBadge.textContent = 'Chưa trả';
+                    } else if (status === 'dung-han') {
+                        statusBadge.textContent = 'Trả đúng hạn';
+                    } else if (status === 'tra-muon') {
+                        statusBadge.textContent = 'Trả muộn';
+                    }
+
+                    document.getElementById('invoice-details-overlay').style.display = 'flex';
+                }
+
+                const deleteBtn = event.target.closest('.delete-btn');
+                if (deleteBtn) {
+                    if (confirm('Bạn có chắc chắn muốn xoá tài khoản này?')) {
+                        const rowToDelete = deleteBtn.closest('tr');
+                        const tableBody = rowToDelete.closest('tbody');
+                        
+                        rowToDelete.remove();
+
+                        const allRows = tableBody.querySelectorAll('tr');
+                        allRows.forEach((row, index) => {
+                            row.cells[0].textContent = index + 1;
+                        });
+                    }
+                }
+
+                // === PHẦN MỚI: XỬ LÝ CLICK ICON ADD STAFF ===
+                const addStaffIcon = event.target.closest('#add-staff-trigger');
+                if (addStaffIcon) {
+                    const overlay = document.getElementById('add-staff-overlay');
+                    if (overlay) {
+                        overlay.querySelector('form').reset();
+                        overlay.querySelector('#modal-staff-role').value = 'Staff';
+                        overlay.style.display = 'flex';
+                    }
+                }
+            });
+            
+            document.addEventListener('change', function(event) {
+                if (event.target.id === modalFileUploadId) {
+                    const fileInput = event.target;
+                    if (fileInput.files && fileInput.files.length > 0) {
+                        document.getElementById('file-name-display').value = fileInput.files[0].name;
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            document.getElementById('modal-book-image-preview').src = e.target.result;
+                        }
+                        reader.readAsDataURL(fileInput.files[0]);
+                    }
+                }
+            });
+
+            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+            scrollToTopBtn.addEventListener('click', function() {
+                mainContentContainer.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+            
+            setActiveLink(categoryTrigger);
+            // Load category from blockchain on initial load
+            if (typeof loadBooksByCategory === 'function') {
+                loadBooksByCategory();
+            } else {
+                setTimeout(() => {
+                    if (typeof loadCategoryFromBlockchain === 'function') {
+                        loadCategoryFromBlockchain();
+                    }
+                }, 1000);
+            }
+
+            // Auto-refresh active view once wallet connects
+            window.addEventListener('walletConnected', (event) => {
+                refreshActiveView('walletConnected');
+            });
+
+            // Show Tracking Prevention notice for Edge users
+            if (navigator.userAgent.includes('Edg')) {
+                const noticeId = 'tracking-prevention-warning';
+                if (!document.getElementById(noticeId)) {
+                    const banner = document.createElement('div');
+                    banner.id = noticeId;
+                    banner.style.cssText = 'position:fixed;top:10px;right:10px;background:#fff3cd;border:1px solid #ffe58f;padding:12px 16px;border-radius:8px;color:#8a6d3b;font-size:13px;z-index:9999;max-width:320px;box-shadow:0 2px 8px rgba(0,0,0,0.15);';
+                    banner.innerHTML = `
+                        <strong>Edge Tracking Prevention</strong><br>
+                        Allow storage for <code>cdn.jsdelivr.net</code> so ethers.js can cache data,
+                        or add this site to the "Allow" list in Edge settings.
+                        <button style="margin-left:8px;background:none;border:none;color:#8a6d3b;font-weight:bold;cursor:pointer;" onclick="this.parentElement.remove()">✕</button>
+                    `;
+                    document.body.appendChild(banner);
+                    setTimeout(() => banner.remove(), 12000);
+                }
+            }
+            
+        });
+    </script>
+</body>
+</html>

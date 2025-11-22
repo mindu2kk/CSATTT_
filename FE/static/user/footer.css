@@ -1,0 +1,53 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    cursor: default;
+}
+
+.contact {
+    background: white;
+    border-top: 2px solid rgb(32, 46, 71);
+    position: fixed;
+    z-index: 99999;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 10vh;
+}
+
+.address-contact {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    gap: 20px;
+    width: 30vw;
+    position: relative;
+    left: 40px;
+}
+
+.logo-contact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 31vw;
+    gap: 20px;
+}
+
+.welcome {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "Short Stack", cursive;
+    font-size: 14px;
+    gap: 10px;
+    position: relative;
+    left: 50px;
+}

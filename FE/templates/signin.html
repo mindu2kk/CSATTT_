@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='signin.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bia">
+        <div class="left-panel">
+            <img src="{{ url_for('get_model_image', filename='anh hoc.jpeg') }}" alt="Ảnh học" style="max-width: 100%; height: auto;">
+        </div>
+        <div class="right-panel">
+            <div class="login-container">
+                <div class="logo">
+                    <h2 class="short-stack-regular"><img style="width: 30px; padding-right: 8px;" src="{{ url_for('get_model_image', filename='BookOpen.png') }}" alt="logo">BOOKSTORE</h2>
+                </div>
+                <input type="text" placeholder="Mobile phone or email">
+                <input type="password" placeholder="Password">
+                <button class="sign-in-btn">Sign in</button>
+                <div class="or-divider">Or</div>
+                <button class="social-btn facebook-btn">Sign in with your Facebook <img src="{{ url_for('get_model_image', filename='logo_fb.png') }}" alt="" style="height: 21px;"></button>
+                <button class="social-btn google-btn">Sign in with your Google <img src="{{ url_for('get_model_image', filename='logo_Google.png') }}" alt="" style="height: 21px;"></button>
+                <p class="ifdont">If you don't have an account, <a href="#" id="signup-link">sign up</a> here </p>
+            </div>
+        </div>
+    </div>
+    <div class="overlay">
+        <div class="signup">
+            <div class="left-img">
+                <img src="{{ url_for('get_model_image', filename='Logo_1.png') }}" alt="logo" style="width: 200px;  margin: 30px 0px 0px 80px; z-index: 100000;">
+                <img src="{{ url_for('get_model_image', filename='logo-2.jpeg') }}" alt="logo" style="width: 245px; margin-left: 230px; position: relative; top: -65px;">
+                <img src="{{ url_for('get_model_image', filename='logo_3.jpeg') }}" alt="logo" style="width: 250px; margin-left: 30px; position: relative; top: -140px;">
+            </div>
+            <div class="right-signup">
+                <h3 class="ultra-regular" style="cursor: default;">Welcome to bookstore</h3>
+                <p style="cursor: default;">Please fill the revalent information carefully</p>
+                <form>
+                    <div class="name-fields">
+                        <div class="input-group">
+                            <label for="first-name">First name</label>
+                            <input type="text" id="first-name">
+                        </div>
+                        <div class="input-group">
+                            <label for="last-name">Last name</label>
+                            <input type="text" id="last-name">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="phone">Phone number</label>
+                        <input type="tel" id="phone">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Confirm Password</label>
+                        <input type="password" id="password">
+                    </div>
+                    <div class="input-group">
+                        <label for="email">Work email</label>
+                        <input type="email" id="email">
+                    </div>
+                    <button type="submit" id="signup-submit-btn">Sign up</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        const signupLink = document.getElementById('signup-link');
+        const overlay = document.querySelector('.overlay');
+        const signupBox = document.querySelector('.signup');
+        signupLink.addEventListener('click', function(event) {
+            event.preventDefault(); 
+            overlay.style.display = 'flex';
+        });
+        overlay.addEventListener('click', function(event) {
+            if (event.target === overlay) {
+                overlay.style.display = 'none';
+            }
+        });
+
+        const signInBtn = document.querySelector('.sign-in-btn');
+        const signUpSubmitBtn = document.getElementById('signup-submit-btn');
+
+        function goToHome() {
+            window.location.href = "{{ url_for('home') }}";
+        }
+
+        if (signInBtn) {
+            signInBtn.addEventListener('click', goToHome);
+        }
+
+        if (signUpSubmitBtn) {
+            signUpSubmitBtn.addEventListener('click', function(event) {
+                event.preventDefault(); 
+                goToHome();
+            });
+        }
+    </script>
+</body>
+</html>

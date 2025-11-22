@@ -1,0 +1,226 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.tooltip i:hover + .tooltip-text{
+    visibility: visible;
+    opacity: 1;
+}
+
+.filter-nav {
+    width: 360px;
+    height: 100vh;
+    background: #87a7e228;
+    padding: 60px;
+    font-family: 'Poppins', sans-serif;
+    position: relative;
+    position: fixed;
+    top: 50px;
+    left: 0;
+    z-index: 99;
+}
+
+.filter-nav h3 {
+    font-family: "Short Stack", cursive;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 15px;
+    cursor: default;
+}
+
+.filter-section {
+    margin-bottom: 20px;
+}
+
+.filter-section h4 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    cursor: default;
+    font-weight: 500;
+}
+
+.filter-section label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.filter-section input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+.contact {
+    background: white;
+    border-top: 2px solid rgb(32, 46, 71);
+    position: fixed;
+    z-index: 99999;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 10%;
+}
+
+.address-contact {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    gap: 20px;
+    width: 30vw;
+    position: relative;
+    left: 40px;
+}
+
+.logo-contact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 31vw;
+    gap: 20px;
+}
+
+.welcome {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "Short Stack", cursive;
+    font-size: 14px;
+    gap: 10px;
+    position: relative;
+    left: 50px;
+}
+
+.content-right {
+    height: calc(100vh - 12vh - 10vh); 
+    width: calc(100vw - 360px);
+    position: absolute; 
+    top: 80px; 
+    left: 360px; 
+    overflow-y: auto; 
+    overflow-x: hidden;
+    font-family: "Short Stack", cursive;
+    padding: 30px 50px;
+    display: flex; 
+    flex-direction: column;
+}
+
+.result {
+    padding-bottom: 4px;
+    width: 70vw;
+    border-bottom: 2px solid gray;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: flex-start;
+}
+
+.sach1 a {
+    text-decoration: none;
+    color: inherit; 
+    display: inline-block; 
+    width: 160px; 
+    height: 240px;
+}
+
+.biasach {
+    height: 240px;
+    width: 160px;
+    border: 2px solid transparent;
+    border-radius: 20px;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.tensach {
+    display: flex;
+    flex-direction: column;
+    width: 160px;
+    margin-bottom: 5px;
+    cursor: default;
+}
+
+.price {
+    font-family: "Short Stack", cursive;
+    width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: default;
+}
+
+.price button {
+    width: 100%;
+    padding: 8px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.price button:hover:not(:disabled) {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+.price button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.price p {
+    color: rgb(231, 20, 4);
+}
+
+.price button {
+    border: 1px solid black;
+    border-radius: 20px;
+    padding: 2px 4px;
+    background-color: yellow;
+    font-family: "Short Stack", cursive;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.content-right.center-mode {
+    display: none;
+    justify-content: center;
+    align-items: center; 
+}
+
+.not-found {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.not-found img {
+    width: 120px;
+}
+
+.not-found p {
+    font-size: 30px;
+    color: #33CCFF;
+}

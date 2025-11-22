@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/contract.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="smart-contract-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Smart contract</h2>
+            <div class="contract-details">
+                <div class="contract-column">
+                    <h3>Thông tin các sách mượn</h3>
+                    
+                    <div class="book-slider-wrapper">
+                        <div class="book-slider-track">
+                            
+                            <div class="book-info-slide">
+                                <img src="{{ url_for('get_model_image', filename='muado.jpg') }}" alt="Book Cover">
+                                <p>Tên: Cây cam ngọt của tôi</p>
+                                <p>ID: BOOK123 (new 99%)</p>
+                                <p>Hình ảnh trước mượn: https://ipfs</p>
+                                <p>Hình ảnh sau mượn: https://ipfs</p>
+                                <p>Tiền cọc: 1000 $</p>
+                            </div>
+                            
+                            <div class="book-info-slide">
+                                <img src="{{ url_for('get_model_image', filename='muado.jpg') }}" alt="Book Cover">
+                                <p>Tên: Sách 2</p>
+                                <p>ID: BOOK456 (new 95%)</p>
+                                <p>Hình ảnh trước mượn: https://ipfs</p>
+                                <p>Hình ảnh sau mượn: https://ipfs</p>
+                                <p>Tiền cọc: 800 $</p>
+                            </div>
+
+                            <div class="book-info-slide">
+                                <img src="{{ url_for('get_model_image', filename='muado.jpg') }}" alt="Book Cover">
+                                <p>Tên: Sách 3</p>
+                                <p>ID: BOOK789 (new 92%)</p>
+                                <p>Hình ảnh trước mượn: https://ipfs</p>
+                                <p>Hình ảnh sau mượn: https://ipfs</p>
+                                <p>Tiền cọc: 1200 $</p>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <div class="slider-nav">
+                        <a class="prev"><i class='bx bx-chevron-left'></i></a>
+                        <span class="dot-container">
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </span>
+                        <a class="next"><i class='bx bx-chevron-right'></i></a>
+                    </div>
+                </div>
+
+                <div class="contract-column">
+                    <h3>Thông tin giao dịch</h3>
+                    <p>Bên cho mượn (bên A): Thư viện Bookstore</p>
+                    <p>Bên mượn (bên B): Bà Nguyễn Thị Lệ</p>
+                    <p>Ngày mượn: 7/11/2025</p>
+                    <p>Ngày trả: 8/12/2025</p>
+                    <p>Số lượng: 2</p>
+                    <p>Tổng tiền cọc: 2000 $</p>
+                    <button class="borrow-btn">Borrow</button>
+                </div>
+                <div class="contract-column note-column">
+                    <h3>Lưu ý đối với việc mượn/trả sách</h3>
+                    <ul>
+                        <li>Sách còn được bảo quản nguyên vẹn giống như lúc trước khi mượn</li>
+                        <li>Nếu làm mất/ hỏng/ rách / Trả muộn sẽ phải đền bù tùy theo mức độ hư hại của sản phẩm (Mất: -100% cọc, Rách: - (10 - 50) % tùy theo mức độ bị rách của sản phẩm, Trả muộn: -20%)</li>
+                    </ul>
+                    <label class="agree-label">
+                        <input type="checkbox"> Tôi đồng ý
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('smart-contract-modal');
+        if (modal) {
+            const borrowButton = modal.querySelector('.borrow-btn');
+            const agreeCheckbox = modal.querySelector('.agree-label input[type="checkbox"]');
+
+            if (borrowButton && agreeCheckbox) {
+                function updateButtonState() {
+                    if (agreeCheckbox.checked) {
+                        borrowButton.disabled = false;
+                    } else {
+                        borrowButton.disabled = true;
+                    }
+                }
+                agreeCheckbox.addEventListener('change', updateButtonState);
+                updateButtonState();
+            }
+        };
+    </script>
+</body>
+</html>

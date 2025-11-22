@@ -1,0 +1,52 @@
+{% extends 'admin/base.html' %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/adminnstaff.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="adminStaffRoot" style="padding: 30px;">
+    <div style="text-align: center; color: #666; padding: 60px;">
+        <i class='bx bx-loader-alt bx-spin' style="font-size: 48px;"></i>
+        <p style="margin-top: 12px;">Loading admin & staff accounts...</p>
+                </div>
+            </div>
+
+<div class="overlay-backdrop" id="add-staff-overlay" style="display:none;">
+            <div class="modal-container">
+        <span class="modal-close-button" onclick="this.closest('.overlay-backdrop').style.display='none'">&times;</span>
+                <h3 class="modal-title">Add New Admin/Staff</h3>
+                <form class="modal-form" id="add-staff-form">
+                    <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="modal-staff-hoten">
+                    </div>
+                    <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="modal-staff-username">
+                    </div>
+                    <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="modal-staff-email">
+                    </div>
+                    <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" id="modal-staff-sdt">
+                    </div>
+                    <div class="form-group">
+                <label>Role</label>
+                <select id="modal-staff-role">
+                    <option value="Staff">Staff</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group-button">
+                <button type="button" class="add-button" onclick="alert('Authorize wallet addresses via smart contract.')">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin/admin-staff-blockchain.js') }}"></script>
+{% endblock %}

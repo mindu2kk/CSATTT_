@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@latest/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/book.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'user/header.html' %}
+
+    <div class="layout">
+        <div class="content">
+            <img src="{{ url_for('get_model_image', filename='muado.jpg') }}" alt="logo">
+            <div class="content-book">
+                <div class="ten">
+                    <p>Mưa đỏ</p>
+                </div>
+                <div class="condition">
+                    <p>Book condition: Like new (<span id="selected-option">80-100%</span>)</p>
+                    <i class='bx  bx-chevron-down' id="toggle-icon"></i> 
+                    <div class="options" id="options">
+                        <div class="option">20-40%</div>
+                        <div class="option">40-60%</div>
+                        <div class="option">60-80%</div>
+                        <div class="option">80-100%</div>
+                    </div>
+                </div>
+                <div class="status">
+                    <p>Status: <b>Available</b></p>
+                </div>
+                <div class="author">
+                    <p>Author: Chu Lai</p>
+                </div>
+                <div class="intro">
+                    <div class="intro-scroll">
+                        <div class="intro-content">
+                            Bộ phim kể về cuộc chiến đấu của Cường, một sinh viên nhạc viện, và các đồng đội tại Thành cổ Quảng Trị. 
+                            Sau khi băng qua sông Thạch Hãn, Cường cùng các tân binh khác được bổ sung vào Tiểu đội 1, do người lính kỳ cựu Nông Văn Tạ chỉ huy. 
+                            Trong cuộc chiến khốc liệt, Cường bị thương và được y tá Hồng chăm sóc, hai người này sinh tình cảm. 
+                            Sau khi hồi phục, Cường quay lại Thành cổ chiến đấu. 
+                            Mặc dù các thành viên Tiểu đội 1 chiến đấu dũng cảm với khẩu hiệu "K3 Tam Sơn còn, Thành cổ còn", họ lần lượt hy sinh. 
+                            Cuối cùng, chỉ còn lại Tấn, thành viên trẻ tuổi nhất, là người sống sót.
+                        </div>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <div class="price-1">
+                        <p>$30.00</p>
+                        <div class="quantity-selector">
+                            <button class="sub"><i class='bx bx-minus'></i></button>
+                            <input type="text" value="01" class="val">
+                            <button class="add"><i class='bx bx-plus'></i></button>
+                        </div>
+                    </div>
+                    <div class="select">
+                        <button class="cart-btn"><i class='bx bx-cart'></i></button>
+                        <button class="buy-now-btn">Borrow Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="view-more">
+            <div class="name">
+                <i class='bx  bx-chevron-right-circle'  ></i> 
+                <p>VIEW MORE</p>
+            </div>
+            <div class="book">
+                <div class="sach1">
+                    <a href="{{ url_for('book') }}">
+                        <div class="biasach"></div>
+                    </a>
+                    <div class="tensach">
+                        <p>Tên sách</p>
+                    </div>
+                    <div class="price-2">
+                        <p>$5.9</p>
+                        <button>Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    {% include 'user/contract.html' %}
+
+    {% include 'user/footer.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/book-detail.js') }}"></script>
+    
+    <script>
+        const quantitySelectors = document.querySelectorAll('.quantity-selector');
+        const statusText = document.querySelector('.status b');
+        if (statusText) {
+            if (statusText.textContent.trim().toLowerCase() === 'available') {
+                statusText.style.color = '#00c853';
+            } else {
+                statusText.style.color = 'red';
+            }
+        }
+
+        quantitySelectors.forEach(selector => {
+            const addButton = selector.querySelector('.add');
+            const subButton = selector.querySelector('.sub');
+            const valueInput = selector.querySelector('.val');
+            
+            const minValue = 1;
+            const maxValue = 50;
+
+            addButton.addEventListener('click', () => {
+                let currentValue = parseInt(valueInput.value);
+                if (currentValue < maxValue) {
+                    currentValue++;
+                    valueInput.value = String(currentValue).padStart(2, '0');
+                }
+            });
+
+            subButton.addEventListener('click', () => {
+                let currentValue = parseInt(valueInput.value);
+                if (currentValue > minValue) {
+                    currentValue--;
+                    valueInput.value = String(currentValue).padStart(2, '0');
+                }
+            });
+
+            valueInput.addEventListener('change', () => {
+                let currentValue = parseInt(valueInput.value) || minValue; 
+                if (currentValue < minValue) currentValue = minValue;
+                if (currentValue > maxValue) currentValue = maxValue;
+
+                valueInput.value = String(currentValue).padStart(2, '0');
+            });
+        });
+
+        const toggleIcon = document.getElementById('toggle-icon');
+        const optionsContainer = document.getElementById('options');
+        const allOptions = document.querySelectorAll('.condition .option');
+        const selectedSpan = document.getElementById('selected-option');
+
+        let hideTimer; 
+
+        toggleIcon.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimer); 
+            optionsContainer.style.display = 'block';
+        });
+
+        toggleIcon.addEventListener('mouseleave', () => {
+            hideTimer = setTimeout(() => {
+                optionsContainer.style.display = 'none';
+            }, 200); 
+        });
+
+        optionsContainer.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimer); 
+        });
+
+        optionsContainer.addEventListener('mouseleave', () => {
+            optionsContainer.style.display = 'none';
+        });
+
+        allOptions.forEach(option => {
+            option.addEventListener('click', (event) => {
+                const newText = event.target.textContent;
+                selectedSpan.textContent = newText;
+                optionsContainer.style.display = 'none';
+            });
+        });
+
+    const modalOverlay = document.getElementById('smart-contract-modal');
+    const modalCloseButton = modalOverlay.querySelector('.modal-close');
+    const borrowNowButton = document.querySelector('.buy-now-btn');
+
+    if (borrowNowButton && modalOverlay) {
+        borrowNowButton.addEventListener('click', () => {
+            const bookTitle = document.querySelector('.ten p').textContent;
+            const bookImageSrc = document.querySelector('.content img').src;
+            const bookCondition = document.getElementById('selected-option').textContent;
+            const bookPrice = document.querySelector('.price-1 p').textContent;
+            const bookAuthorText = document.querySelector('.author p').textContent; 
+            const cleanAuthor = bookAuthorText.replace('Author: ', '');
+
+            const track = modalOverlay.querySelector(".book-slider-track");
+            const sliderNav = modalOverlay.querySelector(".slider-nav");
+
+            const modalTitle = modalOverlay.querySelector('.contract-column h3');
+                if (modalTitle) {
+                    modalTitle.textContent = 'Thông tin sách mượn'; 
+                }
+
+            const newSlideHtml = `
+                <div class="book-info-slide" style="width: 100%; transform: none;">
+                    <img src="${bookImageSrc}" alt="Book Cover">
+                    <p>Tên: ${bookTitle}</p>
+                    <p>Tác giả: ${cleanAuthor}</p>
+                    <p>Tình trạng: ${bookCondition}</p>
+                    <p>Hình ảnh trước mượn: </p>
+                    <p>Hình ảnh sau mượn: </p>
+                    <p>Tiền cọc: ${bookPrice}</p> 
+                </div>
+            `;
+            if (track) {
+                track.innerHTML = newSlideHtml; 
+                track.style.transform = 'none';
+            }
+            if (sliderNav) {
+                sliderNav.style.display = 'none'; 
+            }
+            
+            modalOverlay.classList.add('show');
+        });
+    }
+
+    if (modalCloseButton) {
+        modalCloseButton.addEventListener('click', () => {
+            modalOverlay.classList.remove('show');
+        });
+    }
+
+    modalOverlay.addEventListener('click', (event) => {
+        if (event.target === modalOverlay) {
+            modalOverlay.classList.remove('show');
+        }
+    });
+    </script>
+</body>
+</html>

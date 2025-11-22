@@ -1,0 +1,278 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.content {
+    height: calc(100vh - 12vh - 10vh); 
+    width: 100vw;
+    position: relative; 
+    top: 90px; 
+    padding: 40px 240px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: row;
+    gap: 35px;
+}
+
+.sidebar {
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+}
+
+.user {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    border-bottom: 2px solid gray;
+    padding: 10px;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.user img {
+    height: 40px;
+    width: 40px;
+    border-radius: 99px;
+}
+
+.user p {
+    font-size: 24px;
+    cursor: default;
+}
+
+.profile, 
+.order {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    border: none;
+    background-color: white;
+    font-size: 18px;
+    font-weight: bold;
+    gap: 8px;
+    cursor: pointer;
+    padding-left: 16px;
+}
+
+.profile:hover, 
+.order:hover {
+    background-color: #87a7e228;
+    border-radius: 8px;
+}
+
+.sidebar button.active {
+    background-color: rgb(32, 46, 71); 
+    color: white; 
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+.main-content {
+    background-color: #87a7e228;
+    height: 100%;
+    width: 800px;
+    border-radius: 20px;
+    padding: 40px 100px;
+}
+
+.scroll-wrapper {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none; 
+}
+
+.scroll-wrapper::-webkit-scrollbar {
+    display: none; 
+}
+
+.main-profile {
+    display: flex;
+    flex-direction: column;
+}
+
+.in4 {
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+    height: 60px;
+    gap: 60px;
+}
+
+.label {
+    width: 160px;
+    display: flex;
+    justify-content: end;
+    color: gray;
+    font-weight: 400;
+    font-family: "Sue Ellen Francisco", cursive;
+    cursor: default;
+}
+
+.value {
+    font-family: "Sue Ellen Francisco", cursive;
+    display: flex;
+    align-items: center;
+}
+
+.value input {
+    cursor: pointer;
+}
+
+.value img{
+    height: 24px;
+    
+}
+
+.main-order {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    font-family: "Sue Ellen Francisco", cursive;
+    display: none;
+}
+
+.book {
+    width: 100%;
+    height: 100px;
+    border: 1px dashed gray;
+    border-radius: 20px;
+    padding: 10px 40px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.bia {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+.bia img {
+    height: 100%;
+    border-radius: 8px;
+    box-shadow: 5px 5px 10px grey;
+}
+
+.details {
+    color: rgb(88, 88, 88);
+}
+
+.action {
+    display: flex;
+    align-items: end;
+    flex-direction: column;
+}
+
+.price {
+    color: #ff6f61;
+    font-size: 16px;
+    display: flex;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    margin-top: 30px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%; 
+    margin-right: 8px;
+}
+
+.status-text {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.overlay-backdrop {
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(160, 159, 159, 0.5);
+    z-index: 999; 
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.overlay-content-box {
+    background-color: white;
+    padding: 30px 40px;
+    border-radius: 25px; 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.508);
+    width: 800px; 
+    max-width: 90%;
+    position: relative; 
+    font-family: "Short Stack", cursive; 
+}
+
+.close-overlay-icon {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 30px;
+    color: #888;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.2s;
+    font-family: Arial, sans-serif; 
+}
+.close-overlay-icon:hover {
+    color: #000;
+    transform: scale(1.1);
+}
+
+.overlay-content-box h2 {
+    font-family: "Ultra", serif; 
+    font-weight: 400;
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 25px;
+    color: black;
+}
+
+.contract-details {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px; 
+}
+
+.contract-column {
+    width: 48%; 
+}
+
+.detail-item {
+    background-color: white;
+    border: 2px dashed #ddd; 
+    border-radius: 20px;
+    padding: 12px 18px;
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #333;
+    line-height: 1.4;
+}
+
+.detail-item strong {
+    color: #000;
+    font-size: 17px;
+}
+
+.detail-item.money {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

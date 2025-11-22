@@ -1,0 +1,277 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.bia {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+.left-panel {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-image: url('../model/anh%20hoc.jpeg');
+    background-size: cover;
+    background-position: center;
+}
+
+.right-panel {
+    width: 45%;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 470px;
+    text-align: center;
+    padding: 20px 0; 
+}
+
+.logo h2 {
+    font-size: 40px;
+    margin-bottom: 60px;
+    cursor: default;
+}
+
+.short-stack-regular {
+    font-family: "Short Stack", cursive;
+    font-weight: 400;
+    font-style: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.bia input[type="text"],
+.bia input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 2px solid #a3a3a3;
+    border-radius: 30px;
+    box-sizing: border-box;
+    outline: none;
+    text-indent: 10px;
+}
+
+.sign-in-btn {
+    width: 100%;
+    padding: 12px 40px; 
+    background-color: black;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    margin-bottom: 25px;
+    font-size: 16px;
+}
+
+.sign-in-btn:hover {
+    background-color: #2c2929;
+}
+
+.or-divider {
+    text-align: center;
+    margin-bottom: 25px;
+    position: relative;
+    font-size: 14px;
+    color: #2c2929;
+    cursor: default;
+}
+
+.or-divider::before,
+.or-divider::after {
+    content: '';
+    position: absolute;
+    width: 40%;
+    height: 1px;
+    background-color: #8b8888;
+    top: 50%;
+}
+
+.or-divider::before {
+    left: 0;
+}
+
+.or-divider::after {
+    right: 0;
+}
+
+.social-btn {
+    width: 100%;
+    padding: 10px 40px; 
+    margin-bottom: 20px; 
+    border: 2px solid #a3a3a3;
+    border-radius: 30px;
+    background-color: #fff;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 16px;
+    &:hover {
+      background-color: #87a7e228;
+    }
+}
+
+.signup-link {
+    display: block; 
+    margin-top: 30px; 
+    font-size: 14px;
+    text-decoration: none;
+    color: #555;
+}
+
+.ifdont {
+    margin-top: 30px; 
+    font-size: 16px;
+    text-decoration: none;
+    color: #555;
+    cursor: default;   
+}
+
+.ifdont a {
+    color: blue;
+    cursor: pointer; 
+    text-decoration: underline;
+}
+
+.overlay {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0; 
+    left: 0;
+    z-index: 9999;
+    background-color: rgba(160, 159, 159, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.signup {
+    margin: 4% 20%;
+    background-color: white;
+    display: flex;
+    z-index: 100;
+    height: 80%;
+    width: 80%;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.508);
+    padding-right: 50px;
+    padding-bottom: 10px;
+}
+
+.left-img {
+    display: flex;
+    flex-direction: column;
+}
+
+.right-signup {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 10px;
+    flex-direction: column;
+}
+
+.right-signup p {
+    font-family: Arial; 
+    font-size: 15px;
+    margin-bottom: 20px; 
+    color: rgb(97, 97, 97); 
+    position: relative;
+    top: -20px;
+}
+
+.ultra-regular {
+  font-family: "Ultra", serif;
+  font-weight: 400;
+  font-size: 26px;
+}
+
+form {
+    text-align: left;
+}
+
+.name-fields {
+    display: flex;
+    justify-content: space-between;
+    gap: 50px;
+}
+
+.name-fields .input-group {
+    width: calc(50% - 7.5px);
+}
+
+.input-group {
+    margin-bottom: 20px; 
+    position: relative;
+}
+
+label {
+    display: block;
+    font-size: 0.85em;
+    color: black;
+}
+
+.overlay input[type="text"],
+.overlay input[type="tel"],
+.overlay input[type="password"],
+.overlay input[type="email"] {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    font-size: 0.8em;
+    font-family: Arial; 
+    outline: none;
+}
+
+.overlay input[type="text"]:focus,
+.overlay input[type="tel"]:focus,
+.overlay input[type="password"]:focus,
+.overlay input[type="email"]:focus {
+    border-bottom-color: #333;
+}
+
+.verification-code .send-code {
+    position: absolute;
+    right: 0;
+    bottom: 4px; 
+    text-decoration: none;
+    color: #333;
+    font-size: 0.85em;
+}
+
+button[type="submit"] {
+    width: 100%;
+    padding: 8px; 
+    background-color: black;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 15px; 
+}
+
+button[type="submit"]:hover {
+    background-color: #2c2929;
+}
+
+.contact {
+    background-color: white;
+    border-top: 2px solid ;
+}
+

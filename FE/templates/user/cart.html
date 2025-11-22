@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/cart.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'user/header.html' %}
+    <!-- Blockchain Integration -->
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/cart-blockchain.js') }}"></script>
+
+    <div class="cart-container">
+        <div class="cart-header">
+            <input type="checkbox" id="select-all">
+            <label for="select-all">Select all</label>
+        </div>
+
+        <div class="cart-items">
+            <!-- Cart items will be loaded dynamically from blockchain -->
+        </div>
+
+        <div class="cart-footer">
+            <div class="balance">
+                <p class="value">
+                    <input type="checkbox">
+                    <img src="{{ url_for('get_model_image', filename='xu.png') }}" alt="logo">
+                    <span style="margin-right: 5px;">30,00</span>
+                </p>
+            </div>
+            <div class="total">
+                <span>Total: $0,00</span>
+            </div>
+            <button class="order-btn">Order</button>
+        </div>
+    </div>
+
+    {% include 'user/contract.html' %}
+
+    <div class="checkout-overlay" id="checkoutModal">
+        <div class="checkout-dialog">
+            <button class="dialog-close" data-action="cancel">&times;</button>
+            <h3>Checkout Summary</h3>
+            <p class="dialog-caption">Review your selected books and deposit requirements.</p>
+            <div class="summary-items" id="checkoutItems"></div>
+            <div class="deposit-summary">
+                <div>
+                    <span>Deposit per book</span>
+                    <strong id="checkoutDepositPer">0.0000 ETH</strong>
+                </div>
+                <div>
+                    <span>Total deposit</span>
+                    <strong id="checkoutDepositTotal">0.0000 ETH</strong>
+                    <small id="checkoutDepositUsd">($0.00)</small>
+                </div>
+            </div>
+            <div class="checkout-rules">
+                <p>⚠️ Deposit policy:</p>
+                <ul>
+                    <li>Return on time and in good condition to receive a full refund.</li>
+                    <li>Late return incurs a 0.02 ETH penalty per day.</li>
+                    <li>Lost/damaged books may forfeit the full deposit.</li>
+                </ul>
+            </div>
+            <div class="dialog-actions">
+                <button class="ghost-btn" data-action="cancel">Cancel</button>
+                <button class="primary-btn" data-action="confirm">Confirm & Pay</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="checkout-overlay" id="checkoutMessageModal">
+        <div class="checkout-dialog">
+            <button class="dialog-close" data-action="close">&times;</button>
+            <h3 id="messageModalTitle">Notification</h3>
+            <p id="messageModalBody"></p>
+            <div class="dialog-actions">
+                <button class="primary-btn" data-action="ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    {% include 'user/footer.html' %}
+
+    <script>
+        const totalElement = document.querySelector('.total span');
+        const pointsCheckbox = document.querySelector('.balance .value input[type="checkbox"]');
+        const pointsValueElement = document.querySelector('.balance .value span');
+        
+        function updateTotalPrice() {
+            const allBooks = document.querySelectorAll('.cart-items .book');
+            let total = 0;
+
+            allBooks.forEach(book => {
+                const checkbox = book.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    const priceText = book.querySelector('.price').textContent;
+                    const quantityText = book.querySelector('.val').value;
+                    const price = parseFloat(priceText.replace('$', '').replace(',', '.'));
+                    const quantity = parseInt(quantityText);
+                    total += price * quantity;
+                }
+            });
+
+            if (pointsCheckbox.checked) {
+                const pointsText = pointsValueElement.textContent;
+                const discountAmount = parseFloat(pointsText.replace(',', '.'));
+                total = Math.max(0, total - discountAmount);
+            }
+
+            totalElement.textContent = `Total: $${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        const quantitySelectors = document.querySelectorAll('.quantity-selector');
+        quantitySelectors.forEach(selector => {
+            const addButton = selector.querySelector('.add');
+            const subButton = selector.querySelector('.sub');
+            const valueInput = selector.querySelector('.val');
+            
+            const minValue = 1;
+            const maxValue = 50;
+
+            addButton.addEventListener('click', () => {
+                let currentValue = parseInt(valueInput.value);
+                if (currentValue < maxValue) {
+                    currentValue++;
+                    valueInput.value = String(currentValue).padStart(2, '0');
+                    updateTotalPrice();
+                }
+            });
+
+            subButton.addEventListener('click', () => {
+                let currentValue = parseInt(valueInput.value);
+                if (currentValue > minValue) {
+                    currentValue--;
+                    valueInput.value = String(currentValue).padStart(2, '0');
+                    updateTotalPrice();
+                }
+            });
+
+            valueInput.addEventListener('change', () => {
+                let currentValue = parseInt(valueInput.value) || minValue; 
+                if (currentValue < minValue) currentValue = minValue;
+                if (currentValue > maxValue) currentValue = maxValue;
+                valueInput.value = String(currentValue).padStart(2, '0');
+                updateTotalPrice();
+            });
+        });
+
+        const selectAllCheckbox = document.getElementById('select-all');
+        const bookCheckboxes = document.querySelectorAll('.cart-items .book input[type="checkbox"]');
+
+        selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = selectAllCheckbox.checked;
+            bookCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateTotalPrice();
+        });
+
+        bookCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                updateTotalPrice();
+            });
+        });
+
+        const trashIcons = document.querySelectorAll('.bx-trash');
+        trashIcons.forEach(icon => {
+            icon.addEventListener('click', () => {
+                const bookElement = icon.closest('.book');
+                if (bookElement) {
+                    bookElement.remove();
+                    updateTotalPrice();
+                }
+            });
+        });
+
+        pointsCheckbox.addEventListener('change', updateTotalPrice);
+
+        updateTotalPrice();
+
+        // Order button is handled by cart-blockchain.js (checkoutWithMetaMask)
+        // Don't add event listener here to avoid conflict
+        const modalOverlay = document.getElementById('smart-contract-modal');
+        const modalCloseButton = document.querySelector('.modal-close');
+
+        modalCloseButton.addEventListener('click', () => {
+            modalOverlay.classList.remove('show');
+        });
+
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) {
+                modalOverlay.classList.remove('show');
+            }
+        });
+
+        let slideIndex = 1;
+        const sliderContainer = document.getElementById('smart-contract-modal');
+        const slides = sliderContainer.querySelectorAll(".book-info-slide");
+        const dots = sliderContainer.querySelectorAll(".dot");
+        const track = sliderContainer.querySelector(".book-slider-track");
+
+        const prevButton = sliderContainer.querySelector('.prev');
+        const nextButton = sliderContainer.querySelector('.next');
+        function updateButtonStates() {
+            if (!prevButton || !nextButton) return; 
+
+            if (slideIndex === 1) {
+                prevButton.style.visibility = 'hidden'; 
+            } else {
+                prevButton.style.visibility = 'visible';
+            }
+
+            if (slideIndex === slides.length) {
+                nextButton.style.visibility = 'hidden'; 
+            } else {
+                nextButton.style.visibility = 'visible'; 
+            }
+        }
+
+        function showSlide(n) {
+            slideIndex = n;
+            dots.forEach(dot => dot.classList.remove("active"));
+            if (dots.length > 0) {
+                dots[slideIndex - 1].classList.add("active");
+            }
+            if (track) {
+                track.style.transform = 'translateX(-' + (slideIndex - 1) * 100 + '%)';
+            }
+            updateButtonStates();
+        }
+        showSlide(slideIndex);
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
+                if (slideIndex > 1) { 
+                    showSlide(slideIndex - 1);
+                }
+            });
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                if (slideIndex < slides.length) { 
+                    showSlide(slideIndex + 1);
+                }
+            });
+        }
+        dots.forEach((dot, index) => {
+            dot.addEventListener('click', () => {
+                showSlide(index + 1);
+            });
+        });
+
+        // Order button click is handled by cart-blockchain.js
+        // This modal functionality can be triggered separately if needed
+    </script>
+</body>
+</html>

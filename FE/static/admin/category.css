@@ -1,0 +1,296 @@
+.category-container {
+    width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.category-title {
+    font-family: "Unica One", sans-serif;
+    font-weight: 400;
+    font-size: 24px;
+    letter-spacing: 2px;
+    cursor: default;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 25px;
+    padding: 8px 15px;
+}
+
+.search-bar:focus-within {
+    border-color: rgb(32, 46, 71); 
+}
+
+.search-bar input {
+    border: none;
+    outline: none;
+    font-size: 16px;
+    margin-right: 8px;
+    background: transparent;
+}
+
+.search-bar i {
+    font-size: 20px;
+    color: #888;
+    cursor: pointer;
+}
+
+.category-table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.category-table th,
+.category-table td {
+    border: 1px solid #ddd;
+    padding: 12px 15px;
+    text-align: left;
+    vertical-align: middle; 
+    text-align: center;
+}
+
+.category-table th {
+    background-color: #ddf1ff; 
+    font-weight: bold;
+    color: black;
+}
+
+.category-table td {
+    font-size: 15px;
+}
+
+.category-table td img {
+    max-width: 80px; 
+    border-radius: 8px;
+    height: auto;
+    display: block;
+    margin: 0 auto; 
+}
+
+.category-table thead tr {
+    cursor: default;
+}
+
+.category-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.category-table tbody tr:hover {
+    background-color: #f5f5f5; 
+    cursor: pointer;         
+}
+
+.overlay-backdrop {
+    display: none; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); 
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-container {
+    background-color: white;
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 30px;
+    color: #aaa;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.modal-close-button:hover {
+    color: #333;
+}
+
+.modal-title {
+    font-family: "Unica One", sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    margin-bottom: 25px;
+    text-align: center;
+    cursor: default;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.modal-form .form-group {
+    display: flex;
+    align-items: center;
+}
+.modal-form .form-group label {
+    font-size: 16px;
+    color: black;
+    flex-basis: 150px; 
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 20px;
+}
+
+.modal-form .form-group input {
+    flex-grow: 1;
+    padding: 8px 15px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 20px; 
+    outline: none;
+    max-width: 350px; 
+    outline: none;
+}
+
+.modal-form .form-group textarea {
+    flex-grow: 1;
+    padding: 8px 15px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    outline: none;
+    border-radius: 10px; 
+    overflow-y: auto; 
+    resize: vertical; 
+    scrollbar-width: none;
+}
+
+.modal-form .form-group input:read-only {
+    background-color: #f4f4f4;
+    cursor: default;
+}
+
+.modal-form .form-group input:not(:read-only):focus,
+.modal-form .form-group textarea:focus {
+    border-color: rgb(32, 46, 71); 
+    box-shadow: 0 0 0 1px rgb(32, 46, 71);
+}
+
+.form-group-image {
+    display: flex;
+}
+
+.form-group-image label {
+    font-size: 16px;
+    color: black;
+    flex-basis: 150px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 20px;
+    margin-top: 10px; 
+}
+
+.image-upload-area {
+    flex-grow: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+#modal-book-image-preview {
+    width: 100px;
+    height: 150px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.file-input-wrapper {
+    flex-grow: 1;
+}
+
+.file-input-wrapper #file-name-display {
+    width: 100%;
+    padding: 8px 15px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    background-color: #f9f9f9;
+}
+
+.file-upload-button {
+    padding: 8px 15px;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 15px;
+    display: inline-block; 
+    margin-top: 10px;
+}
+
+.file-upload-button:hover {
+    background-color: #ddd;
+}
+
+#modal-file-upload {
+    display: none;
+}
+
+.modal-form .form-group-button {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.modal-form .form-group-button {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.save-button {
+    padding: 10px 30px; 
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    background-color: rgb(32, 46, 71); 
+    border: none;
+    border-radius: 20px; 
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.save-button:hover {
+    background-color: rgb(48, 69, 107); 
+}
+
+#add-book-trigger {
+    font-size: 28px;
+    color: #555;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-left: 15px;
+}
+
+#add-book-trigger:hover {
+    color: rgb(32, 46, 71); 
+}
+
+.category-header .search-bar {
+    margin-left: auto; 
+}

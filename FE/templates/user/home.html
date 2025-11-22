@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sách</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('static', filename='user/home.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include 'user/header.html' %}
+    <!-- Blockchain Integration -->
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+
+    <div class="filter-nav">
+        <h3 class="short-stack-regular"><i class='bx bx-filter-alt'></i> FILTER</h3>
+        <div class="filter-section">
+            <h4>Book genres</h4>
+            <label><input type="checkbox"> Literature and Arts</label>
+            <label><input type="checkbox"> Science & Academic Books</label>
+            <label><input type="checkbox"> Reference & Textbooks</label>
+            <label><input type="checkbox"> Children's Books</label>
+            <label><input type="checkbox"> Lifestyle & Entertainment</label>
+            <label><input type="checkbox"> Religion & Spirituality</label>
+        </div>
+        <div class="filter-section">
+            <h4>Price</h4>
+            <label><input type="checkbox"> 0 - 50.000đ</label>
+            <label><input type="checkbox"> 50.000 - 100.000đ</label>
+            <label><input type="checkbox"> 100.000 - 200.000đ</label>
+            <label><input type="checkbox"> 200.000đ or more</label>
+        </div>
+    </div>
+
+    <div class="content-right">
+        <div class="result" id="result-container">
+            <p id="result-text">RESULT ""</p>
+        </div>
+        <div class="content" id="blockchain-books-container">
+            <!-- Books sẽ được load từ blockchain tự động bởi blockchain-books.js -->
+            <div class="loading-message" style="text-align: center; padding: 40px; color: #666;">
+                <i class='bx bx-loader-alt bx-spin' style="font-size: 32px;"></i>
+                <p>Loading books from blockchain...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-right center-mode">  
+        <div class="not-found">
+            <img src="{{ url_for('get_model_image', filename='nothing-found.jpg') }}" alt="logo">
+            <p>Nothing was found :\</p>
+        </div>
+    </div>
+    {% include 'user/footer.html' %}
+
+    <script>
+        const searchInput = document.getElementById('search-input');
+        const searchIcon = document.getElementById('search-icon'); 
+        const resultContainer = document.getElementById('result-container');
+        const resultText = document.getElementById('result-text');
+
+        function showResults() {
+            const query = searchInput.value.trim();
+
+            if (query !== '') {
+                resultText.textContent = 'RESULT "' + query + '"';
+                resultContainer.style.display = 'block';
+            }
+        }
+
+        searchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                showResults();
+            }
+        });
+
+        searchIcon.addEventListener('click', () => {
+            showResults();
+        });
+        
+        // AUTO-LOAD BLOCKCHAIN BOOKS ON PAGE LOAD
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🔄 Loading books from blockchain...');
+            await loadBlockchainBooks();
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+</body>
+</html>

@@ -39,18 +39,18 @@ async function main() {
   await authTx.wait();
   console.log("✅ LibraryCore authorized to update BookNFT");
 
-  // Mint sample books
+  // Mint sample books with VALID status (0-3 only!)
   console.log("\n📚 Minting sample books...");
   const books = [
-    { name: "Blockchain Programming", desc: "Complete guide to blockchain development", status: 5 },
-    { name: "Smart Contracts", desc: "Learn Solidity and smart contract development", status: 5 },
-    { name: "DeFi Development", desc: "Build decentralized finance applications", status: 5 }
+    { name: "Blockchain Programming", desc: "Complete guide to blockchain development", status: 0 },  // ✅ 0 = Available
+    { name: "Smart Contracts", desc: "Learn Solidity and smart contract development", status: 0 },  // ✅ 0 = Available
+    { name: "DeFi Development", desc: "Build decentralized finance applications", status: 0 }  // ✅ 0 = Available
   ];
 
   for (let i = 0; i < books.length; i++) {
     const tx = await bookNFT.mintBook(books[i].name, books[i].desc, books[i].status);
     await tx.wait();
-    console.log(`✅ Book ${i + 1} minted: ${books[i].name}`);
+    console.log(`✅ Book ${i + 1} minted: ${books[i].name} (Status: ${books[i].status} = Available)`);
   }
 
   // Save addresses to file

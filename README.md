@@ -17,7 +17,11 @@ Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phé
 ├── 🔗 Smart Contracts (Solidity)
 │   ├── BookNFT.sol - Quản lý sách dưới dạng NFT
 │   └── LibraryCore.sol - Logic mượn/trả sách
-├── 🌐 Web Frontend (HTML/JS)
+├── 🌐 Flask Frontend (Python/Flask) ⭐ MỚI
+│   ├── Giao diện người dùng & Admin
+│   ├── Blockchain integration
+│   └── REST API endpoints
+├── 🌐 Web Frontend (HTML/JS) - Legacy
 │   ├── Giao diện người dùng
 │   └── Tích hợp MetaMask
 ├── ☕ Java Backend (Spring Boot)
@@ -25,8 +29,8 @@ Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phé
 │   └── Web3 integration
 ├── 📊 Subgraph (The Graph)
 │   └── Indexing blockchain data
-└── 🐍 Python Server
-    └── Simple HTTP server
+└── 🐍 Python API Server
+    └── FastAPI REST server
 ```
 
 ## 🚀 Cách chạy dự án
@@ -35,8 +39,8 @@ Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phé
 
 **Yêu cầu hệ thống:**
 - Node.js (v18+) - BẮT BUỘC
+- Python 3.8+ - BẮT BUỘC (cho Flask Frontend)
 - Java 17+ - Tùy chọn (cho Java backend)
-- Python 3.8+ - Tùy chọn (cho Python API server)
 - MetaMask Extension - Khuyến nghị
 - Git
 
@@ -46,12 +50,17 @@ Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phé
 # 1. Cài đặt Node.js dependencies (BẮT BUỘC)
 npm install
 
-# 2. Cài đặt Python dependencies (TÙY CHỌN - cho Python API)
+# 2. Cài đặt Flask Frontend dependencies (BẮT BUỘC)
+cd FE
+pip install -r requirements.txt
+cd ..
+
+# 3. Cài đặt Python API dependencies (TÙY CHỌN - cho Python API)
 cd python-blockchain-server
 pip install -r requirements.txt
 cd ..
 
-# 3. Cài đặt Java dependencies (TÙY CHỌN - cho Java backend)
+# 4. Cài đặt Java dependencies (TÙY CHỌN - cho Java backend)
 cd csattt
 mvnw.cmd clean install    # Windows
 # hoặc ./mvnw clean install  # Linux/Mac
@@ -104,7 +113,20 @@ Sau khi deploy thành công, contract addresses sẽ được lưu vào `web/con
 
 ### Bước 4: Khởi động các services
 
-**Option A: Web Frontend (Đơn giản nhất) ⭐ Khuyến nghị cho người mới**
+**Option A: Flask Frontend (MỚI - Khuyến nghị) ⭐**
+```bash
+# Terminal 3: Khởi động Flask Frontend
+cd FE
+python sach.py
+# Hoặc trên Windows: START_FE.bat
+
+# 🌐 Mở browser:
+#    - User Interface: http://localhost:5000/home
+#    - Admin Interface: http://localhost:5000/admin
+#    - API Status: http://localhost:5000/api/blockchain/status
+```
+
+**Option B: Web Frontend (Legacy - HTML/JS)**
 ```bash
 # Terminal 3: Khởi động web server
 cd web
@@ -114,7 +136,7 @@ python start-server.py
 # 🌐 Mở browser: http://localhost:8080
 ```
 
-**Option B: Python API Server (REST API cho blockchain)**
+**Option C: Python API Server (REST API cho blockchain)**
 ```bash
 # Terminal 3: Khởi động Python API
 cd python-blockchain-server
@@ -125,7 +147,7 @@ python blockchain_server.py
 # 📚 API Docs: http://localhost:8001/docs
 ```
 
-**Option C: Java Backend (Đầy đủ tính năng + Database)**
+**Option D: Java Backend (Đầy đủ tính năng + Database)**
 ```bash
 # Terminal 3: Khởi động Java Spring Boot backend
 cd csattt
@@ -136,7 +158,7 @@ mvnw.cmd spring-boot:run    # Windows
 # 📝 API: http://localhost:8081/api/blockchain/
 ```
 
-**Option D: Subgraph (Tùy chọn - Cho analytics nâng cao)**
+**Option E: Subgraph (Tùy chọn - Cho analytics nâng cao)**
 ```bash
 # Terminal 4: Deploy subgraph (tùy chọn)
 cd subgraph

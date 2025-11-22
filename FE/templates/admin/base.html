@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Admin</title>
+    <link href="https://cdn.boxicons.com/3.0.3/fonts/basic/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/home.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Short+Stack&family=Unica+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ultra&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="admin-layout">
+    <nav class="navbar">
+        <div class="logo">
+            <h2 class="ultra-regular">
+                <img src="{{ url_for('get_model_image', filename='BookOpen.png') }}" alt="logo">
+                Bookstore
+            </h2>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-card {% if active_page == 'dashboard' %}active-link{% endif %}">
+            <i class='bx bx-bar-chart'></i>
+            <div>
+                <p class="nav-label">Dashboard</p>
+                <span class="nav-desc">Stats & Mint</span>
+            </div>
+        </a>
+        <a href="{{ url_for('admin_category') }}" class="nav-card {% if active_page == 'category' %}active-link{% endif %}">
+            <i class='bx bx-category'></i>
+            <div>
+                <p class="nav-label">Categories</p>
+                <span class="nav-desc">Book states</span>
+            </div>
+        </a>
+        <a href="{{ url_for('admin_invoice') }}" class="nav-card {% if active_page == 'invoice' %}active-link{% endif %}">
+            <i class='bx bx-receipt'></i>
+            <div>
+                <p class="nav-label">Invoices</p>
+                <span class="nav-desc">Borrow history</span>
+            </div>
+        </a>
+        <a href="{{ url_for('admin_manage') }}" class="nav-card {% if active_page == 'manage' %}active-link{% endif %}">
+            <i class='bx bx-edit'></i>
+            <div>
+                <p class="nav-label">Modify Books</p>
+                <span class="nav-desc">Status & Condition</span>
+            </div>
+        </a>
+        <a href="{{ url_for('admin_staff') }}" class="nav-card {% if active_page == 'staff' %}active-link{% endif %}">
+            <i class='bx bx-user-circle'></i>
+            <div>
+                <p class="nav-label">Admins & Staff</p>
+                <span class="nav-desc">Authorized wallets</span>
+            </div>
+        </a>
+    </nav>
+
+    <header class="header">
+        <div id="walletWidget">
+            <button id="connectWalletBtn" class="wallet-btn" onclick="connectMetaMask()">
+                <i class='bx bx-wallet'></i>
+                <span class="wallet-text">Connect</span>
+            </button>
+            <div id="walletInfo" class="wallet-info" style="display: none;">
+                <div class="wallet-address" id="walletAddress" title="Click to copy" onclick="copyWalletAddress()">0x0000...0000</div>
+                <div class="wallet-balance" id="walletBalance">0.0000 ETH</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content" data-current-view="{{ active_page or '' }}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <button id="scrollToTopBtn" class="scroll-to-top">
+        <i class='bx bx-chevrons-up'></i>
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script>
+        document.getElementById('scrollToTopBtn').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+
