@@ -7,8 +7,11 @@ Hệ thống thư viện phi tập trung sử dụng blockchain Ethereum để q
 Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phép:
 - **Quản lý sách dưới dạng NFT**: Mỗi cuốn sách là một token ERC721 duy nhất
 - **Mượn/trả sách tự động**: Smart contracts xử lý logic mượn trả và tiền cọc
-- **Hệ thống uy tín**: Theo dõi lịch sử mượn trả của người dùng
-- **Đa nền tảng**: Web interface, Java backend, và subgraph indexing
+- **Hệ thống phê duyệt**: Admin phê duyệt yêu cầu trả sách với đánh giá tình trạng
+- **Quản lý tiền cọc**: EscrowVault tự động xử lý tiền cọc và phạt
+- **Hệ thống vai trò**: RoleManager quản lý quyền Admin/User
+- **Giỏ hàng**: UserCart cho phép mượn nhiều sách cùng lúc
+- **Hồ sơ người dùng**: UserProfileV2 theo dõi lịch sử và uy tín
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -16,12 +19,17 @@ Library Blockchain System là một ứng dụng phi tập trung (DApp) cho phé
 📦 Library Blockchain System
 ├── 🔗 Smart Contracts (Solidity)
 │   ├── BookNFT.sol - Quản lý sách dưới dạng NFT
-│   └── LibraryCore.sol - Logic mượn/trả sách
-├── 🌐 Flask Frontend (Python/Flask) ⭐ MỚI
+│   ├── LibraryCoreV3.sol - Logic mượn/trả sách (phiên bản mới nhất)
+│   ├── EscrowVault.sol - Quản lý tiền cọc và phạt
+│   ├── RoleManager.sol - Quản lý vai trò Admin/User
+│   ├── UserCart.sol - Giỏ hàng mượn sách
+│   └── UserProfileV2.sol - Hồ sơ người dùng
+├── 🌐 Flask Frontend (Python/Flask)
 │   ├── Giao diện người dùng & Admin
 │   ├── Blockchain integration
+│   ├── Return approval workflow
 │   └── REST API endpoints
-├── 🌐 Web Frontend (HTML/JS) - Legacy
+├── 🌐 Web Frontend (HTML/JS)
 │   ├── Giao diện người dùng
 │   └── Tích hợp MetaMask
 ├── ☕ Java Backend (Spring Boot)
@@ -55,21 +63,15 @@ cd FE
 pip install -r requirements.txt
 cd ..
 
-# 3. Cài đặt Python API dependencies (TÙY CHỌN - cho Python API)
+# 3. Cài đặt Python API dependencies (TÙY CHỌN)
 cd python-blockchain-server
 pip install -r requirements.txt
 cd ..
 
-# 4. Cài đặt Java dependencies (TÙY CHỌN - cho Java backend)
+# 4. Cài đặt Java dependencies (TÙY CHỌN)
 cd csattt
 mvnw.cmd clean install    # Windows
-# hoặc ./mvnw clean install  # Linux/Mac
 cd ..
-```
-
-**Kiểm tra cấu hình:**
-```bash
-node verify-config.js
 ```
 
 ### Bước 2: Khởi động Blockchain Local
@@ -88,7 +90,6 @@ Hardhat sẽ tạo một blockchain local với:
 ```
 Started HTTP and WebSocket JSON-RPC server at http://127.0.0.1:8545/
 Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000 ETH)
-...
 ```
 
 ### Bước 3: Deploy Smart Contracts
@@ -96,29 +97,29 @@ Account #0: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 (10000 ETH)
 ```bash
 # Terminal 2: Deploy contracts
 npx hardhat run scripts/deploy.ts --network localhost
-
-# Hoặc deploy phiên bản minimal (nhanh hơn)
-npx hardhat run scripts/deploy-minimal.ts --network localhost
 ```
 
 **✅ THÀNH CÔNG khi thấy:**
 ```
 🎉 Deployment Complete!
 📋 Contract Addresses:
-   BookNFT:      0x5FbDB2315678afecb367f032d93F642f64180aa3
-   LibraryCore:  0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+   BookNFT:         0x5FbDB2315678afecb367f032d93F642f64180aa3
+   LibraryCoreV3:   0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+   EscrowVault:     0x...
+   RoleManager:     0x...
+   UserCart:        0x...
+   UserProfileV2:   0x...
 ```
 
-Sau khi deploy thành công, contract addresses sẽ được lưu vào `web/contracts.json`.
+Contract addresses sẽ được lưu vào `FE/static/js/shared/contracts.json`.
 
-### Bước 4: Khởi động các services
+### Bước 4: Khởi động Frontend
 
-**Option A: Flask Frontend (MỚI - Khuyến nghị) ⭐**
+**Flask Frontend (Khuyến nghị):**
 ```bash
 # Terminal 3: Khởi động Flask Frontend
 cd FE
 python sach.py
-# Hoặc trên Windows: START_FE.bat
 
 # 🌐 Mở browser:
 #    - User Interface: http://localhost:5000/home
@@ -126,49 +127,14 @@ python sach.py
 #    - API Status: http://localhost:5000/api/blockchain/status
 ```
 
-**Option B: Web Frontend (Legacy - HTML/JS)**
+**Web Frontend (HTML/JS):**
 ```bash
 # Terminal 3: Khởi động web server
 cd web
-python start-server.py
-# Hoặc: python -m http.server 8080
+python -m http.server 8080
 
 # 🌐 Mở browser: http://localhost:8080
 ```
-
-**Option C: Python API Server (REST API cho blockchain)**
-```bash
-# Terminal 3: Khởi động Python API
-cd python-blockchain-server
-python blockchain_server.py
-# Hoặc trên Windows: START_SERVER.bat
-
-# 🌐 API: http://localhost:8001
-# 📚 API Docs: http://localhost:8001/docs
-```
-
-**Option D: Java Backend (Đầy đủ tính năng + Database)**
-```bash
-# Terminal 3: Khởi động Java Spring Boot backend
-cd csattt
-mvnw.cmd spring-boot:run    # Windows
-# hoặc ./mvnw spring-boot:run  # Linux/Mac
-
-# 🌐 Backend: http://localhost:8081
-# 📝 API: http://localhost:8081/api/blockchain/
-```
-
-**Option E: Subgraph (Tùy chọn - Cho analytics nâng cao)**
-```bash
-# Terminal 4: Deploy subgraph (tùy chọn)
-cd subgraph
-npm install
-npm run codegen
-npm run build
-npm run deploy-local
-```
-
-💡 **Gợi ý:** Bạn có thể chạy nhiều services cùng lúc trong các terminal khác nhau để có trải nghiệm đầy đủ nhất!
 
 ### Bước 5: Kết nối MetaMask
 
@@ -184,54 +150,42 @@ npm run deploy-local
 
 ### Bước 6: Sử dụng ứng dụng
 
-1. **Mở web interface**: http://localhost:8080
-2. **Connect MetaMask** 
-3. **Borrow sách**: Chọn sách và trả tiền cọc (0.1 ETH)
-4. **Return sách**: Trả sách và nhận lại tiền cọc
-5. **Xem reputation**: Theo dõi điểm uy tín của bạn
+**User Flow:**
+1. Connect MetaMask
+2. Chọn sách và thêm vào giỏ hàng
+3. Mượn sách (trả tiền cọc 0.01 ETH/sách)
+4. Yêu cầu trả sách và chọn tình trạng sách
+5. Chờ Admin phê duyệt
+6. Nhận lại tiền cọc (hoặc bị phạt nếu sách hư hỏng)
+
+**Admin Flow:**
+1. Xem danh sách yêu cầu trả sách
+2. Đánh giá tình trạng sách
+3. Phê duyệt hoặc từ chối
+4. Hệ thống tự động xử lý tiền cọc
 
 ## 🛠️ Scripts hữu ích
 
-### NPM Scripts (package.json)
+### NPM Scripts
 ```bash
 # Compile contracts
 npm run compile
 
-# Deploy contracts (full version)
+# Deploy contracts
 npm run deploy
 
-# Deploy minimal version (faster)
-npm run deploy-minimal
-
-# Run tests
-npm run test
-
-# Start Hardhat node
+# Run Hardhat node
 npm run node
 
 # Interact with contracts
 npm run interact
-
-# Verify deployment
-npm run verify
-
-# Test system
-npm run test-system
-```
-
-### Utility Scripts
-```bash
-# Verify cấu hình toàn bộ dự án
-node verify-config.js
-
-# Test specific scripts
-npx hardhat run scripts/test-system.ts --network localhost
-npx hardhat run scripts/verify-deployment.ts --network localhost
-npx hardhat run scripts/interact.ts --network localhost
 ```
 
 ### Backend Scripts
 ```bash
+# Flask Frontend
+cd FE && python sach.py
+
 # Java backend
 cd csattt && mvnw.cmd spring-boot:run
 
@@ -239,7 +193,7 @@ cd csattt && mvnw.cmd spring-boot:run
 cd python-blockchain-server && python blockchain_server.py
 
 # Web server
-cd web && python start-server.py
+cd web && python -m http.server 8080
 ```
 
 ## 📁 Cấu trúc thư mục
@@ -249,50 +203,61 @@ cd web && python start-server.py
 ├── 📄 README.md                 # Tài liệu dự án
 ├── 📄 package.json             # Node.js dependencies & scripts
 ├── 📄 hardhat.config.ts        # Hardhat configuration
-├── 📄 tsconfig.json            # TypeScript configuration
-├── 📄 verify-config.js         # Script kiểm tra cấu hình
+├── 📄 .gitignore               # Git ignore rules
 │
 ├── 📂 contracts/               # ⭐ Smart Contracts (Solidity)
 │   ├── BookNFT.sol            # NFT contract cho sách
-│   ├── LibraryCore.sol        # Logic mượn/trả sách chính
-│   ├── LibraryCoreV2.sol      # Version 2 với cải tiến
+│   ├── LibraryCoreV3.sol      # Logic mượn/trả sách (v3)
 │   ├── EscrowVault.sol        # Quản lý tiền cọc
-│   ├── UserProfile.sol        # Hồ sơ người dùng
-│   ├── BookNFT.minimal.sol    # Phiên bản minimal để test nhanh
-│   └── LibraryCore.minimal.sol
+│   ├── RoleManager.sol        # Quản lý vai trò
+│   ├── UserCart.sol           # Giỏ hàng
+│   └── UserProfileV2.sol      # Hồ sơ người dùng (v2)
 │
 ├── 📂 scripts/                 # ⚙️ Deployment & Testing Scripts
 │   ├── deploy.ts              # Deploy contracts chính
 │   ├── deploy-minimal.ts      # Deploy phiên bản minimal
-│   ├── interact.ts            # Script tương tác với contracts
-│   ├── test-system.ts         # Test toàn bộ hệ thống
-│   ├── verify-deployment.ts   # Verify deployment thành công
-│   └── README.md              # Tài liệu chi tiết scripts
+│   ├── interact.ts            # Script tương tác
+│   ├── test-system.ts         # Test hệ thống
+│   └── verify-deployment.ts   # Verify deployment
 │
-├── 📂 web/                     # 🌐 Web Frontend (HTML/CSS/JS)
+├── 📂 FE/                      # 🌐 Flask Frontend (Python)
+│   ├── sach.py                # Main Flask application
+│   ├── requirements.txt       # Python dependencies
+│   ├── templates/             # HTML templates
+│   │   ├── user/             # User pages
+│   │   └── admin/            # Admin pages
+│   └── static/               # Static assets
+│       ├── js/               # JavaScript files
+│       │   ├── shared/       # Shared utilities
+│       │   │   ├── blockchain-constants.js
+│       │   │   └── contracts.json
+│       │   ├── admin/        # Admin scripts
+│       │   │   ├── return-approval.js
+│       │   │   └── invoice-blockchain.js
+│       │   ├── cart-blockchain-v3.js
+│       │   ├── account-blockchain.js
+│       │   ├── blockchain-books.js
+│       │   └── return-notification.js
+│       ├── css/              # Stylesheets
+│       └── user/             # User-specific assets
+│
+├── 📂 web/                     # 🌐 Web Frontend (HTML/JS)
 │   ├── index.html             # Giao diện chính
-│   ├── minimal.html           # Giao diện đơn giản
-│   ├── test-profile.html      # Test user profiles
-│   ├── app.js                 # JavaScript logic chính
+│   ├── app.js                 # JavaScript logic
 │   ├── auth.js                # Authentication
-│   ├── profile.js             # User profile management
-│   ├── blockchain-profile.js  # Blockchain profile interactions
+│   ├── profile.js             # User profile
+│   ├── blockchain-profile.js  # Blockchain interactions
 │   ├── style.css              # Styling
-│   ├── start-server.py        # Python HTTP server cho web
-│   └── contracts.json         # Contract addresses (auto-generated)
+│   └── contracts.json         # Contract addresses
 │
-├── 📂 python-blockchain-server/ # 🐍 Python FastAPI Backend
+├── � vpython-blockchain-server/ # 🐍 Python FastAPI Backend
 │   ├── blockchain_server.py   # Main API server
 │   ├── start_server.py        # Startup script
-│   ├── requirements.txt       # Python dependencies
-│   └── START_SERVER.bat       # Windows batch file
+│   └── requirements.txt       # Python dependencies
 │
 ├── 📂 csattt/                  # ☕ Java Spring Boot Backend
 │   ├── pom.xml                # Maven dependencies
 │   ├── mvnw / mvnw.cmd        # Maven wrapper
-│   ├── README.md              # Java backend documentation
-│   ├── test-blockchain.bat    # Test script
-│   ├── create_database.sql    # Database schema
 │   └── src/                   # Java source code
 │       ├── main/java/...      # Application code
 │       └── main/resources/    # Configuration files
@@ -301,27 +266,38 @@ cd web && python start-server.py
 │   └── modules/
 │       └── Library.ts         # Library deployment module
 │
-├── 📂 subgraph/                # 📊 The Graph Indexing (Optional)
+├── 📂 subgraph/                # 📊 The Graph Indexing
 │   ├── schema.graphql         # GraphQL schema
 │   ├── subgraph.yaml          # Subgraph manifest
 │   └── src/                   # Mapping functions
 │
-├── 📂 test/                    # 🧪 Hardhat Tests
-│   └── Library.ts             # Test suite cho Library system
-│
 ├── 📂 artifacts/               # 📦 Compiled Contracts (auto-generated)
 ├── 📂 cache/                   # 💾 Hardhat Cache (auto-generated)
-├── 📂 typechain-types/         # 🔧 TypeChain Types (auto-generated)
-└── 📂 node_modules/            # 📚 Dependencies (auto-generated)
+└── 📂 typechain-types/         # 🔧 TypeChain Types (auto-generated)
 ```
 
-### 🗂️ File quan trọng:
-- **Smart Contracts**: `contracts/*.sol` - Logic blockchain chính
-- **Deployment**: `scripts/deploy.ts` - Deploy contracts
-- **Configuration**: `hardhat.config.ts`, `verify-config.js`
-- **Frontend**: `web/index.html`, `web/app.js`
-- **Backend**: `csattt/src/` (Java), `python-blockchain-server/` (Python)
-- **Contract Info**: `web/contracts.json` (generated after deployment)
+## ✨ Tính năng chính
+
+### Smart Contracts V3
+- ✅ **LibraryCoreV3**: Logic mượn/trả sách với return approval workflow
+- ✅ **EscrowVault**: Quản lý tiền cọc tự động, xử lý phạt theo tình trạng sách
+- ✅ **RoleManager**: Phân quyền Admin/User
+- ✅ **UserCart**: Mượn nhiều sách cùng lúc
+- ✅ **UserProfileV2**: Theo dõi lịch sử và reputation
+
+### Frontend Features
+- ✅ **User Interface**: Duyệt sách, giỏ hàng, mượn/trả sách
+- ✅ **Admin Dashboard**: Phê duyệt yêu cầu trả sách, quản lý hệ thống
+- ✅ **Return Workflow**: Người dùng đánh giá tình trạng → Admin phê duyệt
+- ✅ **Deposit Management**: Hiển thị tiền cọc 0.01 ETH chuẩn hóa
+- ✅ **Status Tracking**: Theo dõi trạng thái sách real-time
+
+### Book Conditions
+- **NEW (5)**: Như mới - Hoàn tiền 100%
+- **GOOD (0)**: Tốt - Hoàn tiền 100%
+- **FAIR (2)**: Khá - Phạt 20%
+- **POOR (3)**: Kém - Phạt 50%
+- **DAMAGED (4)**: Hư hỏng - Phạt 80%
 
 ## 🔧 Troubleshooting
 
@@ -349,25 +325,11 @@ npx hardhat run scripts/deploy.ts --network localhost
 **4. Port conflicts:**
 ```bash
 # Hardhat: 8545
+# Flask: 5000
 # Web server: 8080  
 # Java backend: 8081
 # Đảm bảo các port này không bị chiếm dụng
 ```
-
-### Verify cấu hình:
-```bash
-node verify-config.js
-```
-
-## 🎮 Demo Flow
-
-1. **Khởi động hệ thống** (5 phút)
-2. **Connect MetaMask** (1 phút)
-3. **Borrow sách đầu tiên** (2 phút)
-4. **Return sách** (1 phút)
-5. **Xem reputation tăng** (30 giây)
-
-**Total demo time: ~10 phút**
 
 ## 🔐 Security Notes
 
@@ -376,45 +338,45 @@ node verify-config.js
 - ⚠️ **Sử dụng environment variables cho production**
 - ⚠️ **Hardhat accounts có 10,000 ETH fake - không có giá trị thật**
 
-## 🤝 Contributing
+## 🎮 Demo Flow
 
-1. Fork repository
-2. Tạo feature branch
-3. Commit changes
-4. Push và tạo Pull Request
+1. **Khởi động hệ thống** (5 phút)
+   - Start Hardhat node
+   - Deploy contracts
+   - Start Flask frontend
 
-## 🧹 Dự án đã được tối ưu hóa
+2. **Connect MetaMask** (1 phút)
+   - Add Hardhat network
+   - Import test account
 
-Các file/folder đã được loại bỏ để giữ dự án gọn gàng:
-- ❌ `admin-dashboard/` - Admin dashboard chưa hoàn thiện
-- ❌ `lib/forge-std/` - Forge standard library (dự án dùng Hardhat)
-- ❌ `foundry.lock` - Foundry lock file (không cần thiết)
-- ❌ `ignition/modules/Counter.ts` - Counter example không dùng
-- ❌ `test/Counter.ts` - Test file cho Counter
-- ❌ `scripts/deploy-with-profiles.ts` - Script deploy trùng lặp
-- ❌ `contracts/*.disabled` - Các contract bị vô hiệu hóa
+3. **User: Mượn sách** (2 phút)
+   - Browse books
+   - Add to cart
+   - Borrow with deposit
 
-Các file QUAN TRỌNG được giữ lại:
-- ✅ Tất cả smart contracts chính (BookNFT, LibraryCore, EscrowVault, UserProfile)
-- ✅ Java backend (csattt/) - Không thay đổi
-- ✅ Python blockchain server - Đã cải tiến
-- ✅ Web frontend với đầy đủ tính năng
-- ✅ Deployment và testing scripts
-- ✅ Configuration files
+4. **User: Yêu cầu trả sách** (1 phút)
+   - Request return
+   - Select book condition
+
+5. **Admin: Phê duyệt** (1 phút)
+   - Review request
+   - Approve/Reject
+   - System processes deposit
+
+**Total demo time: ~10 phút**
 
 ## 📞 Support
 
 Nếu gặp vấn đề:
-1. **Kiểm tra cấu hình**: `node verify-config.js`
-2. **Đọc [Troubleshooting](#-troubleshooting)**
+1. **Kiểm tra** Hardhat node đang chạy
+2. **Verify** contracts đã deploy chưa
 3. **Xem logs** trong console/terminal
-4. **Kiểm tra** Hardhat node đang chạy
-5. **Verify** contracts đã deploy chưa
-6. Tạo issue trên GitHub nếu vẫn gặp vấn đề
+4. **Đọc** [Troubleshooting](#-troubleshooting)
+5. Tạo issue trên GitHub
 
 ## 📄 License
 
-MIT License - Xem file LICENSE để biết thêm chi tiết.
+MIT License
 
 ---
 
