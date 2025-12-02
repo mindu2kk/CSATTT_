@@ -73,7 +73,11 @@ const ESCROW_VAULT_ABI = [
     "function owner() external view returns (address)",
     "function getBalance() external view returns (uint256)",
     "function withdrawPenalty(uint256 amount) external",
-    "function withdrawAllPenalty() external"
+    "function withdrawAllPenalty() external",
+    // ⭐ CRITICAL: Events (needed for .on() listeners!)
+    "event Locked(address indexed user, uint256 indexed bookId, uint256 amount)",
+    "event Released(address indexed to, uint256 indexed bookId, uint256 amount)",
+    "event CoreSet(address indexed core)"
 ];
 
 // Helper function to get book info with error handling
@@ -126,9 +130,10 @@ async function getBookInfoSafe(bookId) {
 const STATUS_NAMES = {
     0: "Available",
     1: "Borrowed", 
-    2: "Damaged",  // ✅ FIXED: Contract uses "Damaged", not "Reserved"
-    3: "Lost"
-    // Note: 4="Old", 5="New" exist in contract but not used by LibraryCore
+    2: "Damaged",
+    3: "Lost",
+    4: "Old",
+    5: "New Arrival"
 };
 
 // Condition mappings
@@ -152,8 +157,52 @@ const STATUS_EMOJIS = {
     2: "📙",
     3: "📕",
     4: "📘",
-    5: "📒"
+    5: "🆕"
 };
+
+// Use global DEFAULT_BOOK_IMAGE if it exists, otherwise define it
+if (typeof window.DEFAULT_BOOK_IMAGE === 'undefined') {
+    window.DEFAULT_BOOK_IMAGE = '/model_images/muado.jpg';
+}
+// Use window.DEFAULT_BOOK_IMAGE directly to avoid const redeclaration
+
+function resolveIpfsUrl(imageHash) {
+    if (!imageHash) return window.DEFAULT_BOOK_IMAGE;
+    const trimmed = imageHash.trim();
+    if (!trimmed) return window.DEFAULT_BOOK_IMAGE;
+    if (trimmed.startsWith('ipfs://')) {
+        return `https://ipfs.io/ipfs/${trimmed.replace('ipfs://', '')}`;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+    }
+    return `https://ipfs.io/ipfs/${trimmed}`;
+}
+
+function sanitizeIpfsInput(value) {
+    if (!value) return '';
+    return value.trim();
+}
+
+let batchMintRowCounter = 0;
+let reputationEntries = [];
+let escrowActivityEntries = [];
+const MAX_ACTIVITY_ENTRIES = 12;
+
+function shortAddress(address, head = 6, tail = 4) {
+    if (!address) return "-";
+    if (address.length <= head + tail + 2) return address;
+    return `${address.slice(0, head)}...${address.slice(-tail)}`;
+}
+
+function formatTimestamp(ms) {
+    if (!ms) return "";
+    try {
+        return new Date(ms).toLocaleString();
+    } catch (error) {
+        return "";
+    }
+}
 
 // Wait for ethers to load
 function waitForEthers() {
@@ -197,12 +246,15 @@ async function loadContracts() {
         console.log('📋 Loaded contracts:', contracts);
         
         // Display contract info
-        document.getElementById('contractAddresses').innerHTML = `
-            <div><strong>BookNFT:</strong> ${contracts.bookNFT}</div>
-            <div><strong>LibraryCore:</strong> ${contracts.libraryCore}</div>
-            <div><strong>Network:</strong> ${contracts.network}</div>
-            <div><strong>Chain ID:</strong> ${contracts.chainId}</div>
-        `;
+        const contractInfo = document.getElementById('contractAddresses');
+        if (contractInfo) {
+            contractInfo.innerHTML = `
+                <div><strong>BookNFT:</strong> ${contracts.bookNFT}</div>
+                <div><strong>LibraryCore:</strong> ${contracts.libraryCore}</div>
+                <div><strong>Network:</strong> ${contracts.network}</div>
+                <div><strong>Chain ID:</strong> ${contracts.chainId}</div>
+            `;
+        }
     } catch (error) {
         console.error('❌ Failed to load contracts:', error);
         showNotification('Failed to load contract addresses. Please deploy contracts first.', 'error');
@@ -212,20 +264,42 @@ async function loadContracts() {
 // Setup event listeners
 function setupEventListeners() {
     // Connection
-    document.getElementById('connectButton').addEventListener('click', connectWallet);
+    const connectBtn = document.getElementById('connectButton');
+    if (connectBtn) connectBtn.addEventListener('click', connectWallet);
     
     // Borrow
-    document.getElementById('borrowButton').addEventListener('click', borrowBook);
+    const borrowBtn = document.getElementById('borrowButton');
+    if (borrowBtn) borrowBtn.addEventListener('click', borrowBook);
     
     // Return
-    document.getElementById('returnButton').addEventListener('click', returnBook);
+    const returnBtn = document.getElementById('returnButton');
+    if (returnBtn) returnBtn.addEventListener('click', returnBook);
     
     // Admin
-    document.getElementById('mintButton').addEventListener('click', mintBook);
-    document.getElementById('updateStatusButton').addEventListener('click', updateBookStatus);
+    const mintBtn = document.getElementById('mintButton');
+    if (mintBtn) mintBtn.addEventListener('click', mintBook);
+    
+    const updateStatusBtn = document.getElementById('updateStatusButton');
+    if (updateStatusBtn) updateStatusBtn.addEventListener('click', updateBookStatus);
+    
+    const addBatchRowBtn = document.getElementById('addBatchRowButton');
+    if (addBatchRowBtn) addBatchRowBtn.addEventListener('click', () => addBatchMintRow());
+    
+    const batchMintBtn = document.getElementById('batchMintButton');
+    if (batchMintBtn) batchMintBtn.addEventListener('click', batchMintBooks);
+    
+    const checkDepositBtn = document.getElementById('checkDepositButton');
+    if (checkDepositBtn) checkDepositBtn.addEventListener('click', checkEscrowDeposit);
+    
+    const refreshEscrowBtn = document.getElementById('refreshEscrowActivityButton');
+    if (refreshEscrowBtn) refreshEscrowBtn.addEventListener('click', refreshEscrowActivity);
+    
+    const refreshReputationBtn = document.getElementById('refreshReputationFeedButton');
+    if (refreshReputationBtn) refreshReputationBtn.addEventListener('click', () => loadReputationFeed());
     
     // Profile
-    document.getElementById('refreshProfile').addEventListener('click', refreshProfile);
+    const refreshProfileBtn = document.getElementById('refreshProfile');
+    if (refreshProfileBtn) refreshProfileBtn.addEventListener('click', refreshProfile);
 }
 
 // Setup tab switching
@@ -251,10 +325,7 @@ function setupTabs() {
             } else if (targetTab === 'profile') {
                 refreshProfile();
             } else if (targetTab === 'admin') {
-                refreshAdminStats();
-                loadBooksForUpdate();
-                loadContractStatus();
-                loadEscrowVaultInfo();
+                bootstrapAdminView();
             } else if (targetTab === 'borrow') {
                 loadBorrowerInfo();
                 loadAvailableBooksForBorrow();
@@ -264,6 +335,34 @@ function setupTabs() {
             }
         });
     });
+
+    const mainContent = document.querySelector('.main-content');
+    const currentView = mainContent?.dataset?.currentView;
+    if (currentView === 'dashboard' || currentView === 'admin-dashboard') {
+        bootstrapAdminView();
+    }
+}
+
+function bootstrapAdminView() {
+    initBatchMintSection();
+    refreshAdminStats();
+    loadBooksForUpdate();
+    loadContractStatus();
+    loadEscrowVaultInfo();
+    refreshEscrowActivity();
+    loadReputationFeed();
+    startEscrowEventListeners();
+    startReputationListener();
+}
+
+function isAdminViewActive() {
+    const adminTab = document.getElementById('admin');
+    if (adminTab && adminTab.classList.contains('active')) {
+        return true;
+    }
+    const mainContent = document.querySelector('.main-content');
+    const currentView = mainContent?.dataset?.currentView;
+    return currentView === 'dashboard' || currentView === 'admin-dashboard';
 }
 
 // Check blockchain sync status
@@ -480,7 +579,22 @@ async function connectWallet() {
             // Initialize EscrowVault contract if address exists
             if (contracts.escrowVault) {
                 escrowVaultContract = new ethers.Contract(contracts.escrowVault, ESCROW_VAULT_ABI, signer);
+                console.log('✅ EscrowVault loaded in app.js:', contracts.escrowVault);
             }
+            
+            // ⭐ Sync with blockchain-books.js if it loaded first
+            if (!escrowVaultContract && window.blockchainBooks?.escrowVaultContract) {
+                escrowVaultContract = window.blockchainBooks.escrowVaultContract;
+                console.log('✅ Using EscrowVault from blockchain-books.js');
+            }
+            
+            // ⭐ Share escrowVaultContract globally
+            if (escrowVaultContract) {
+                window.escrowVaultContract = escrowVaultContract;
+            }
+            
+            startReputationListener();
+            startEscrowEventListeners();
             
             // Test contract connection
             try {
@@ -495,12 +609,21 @@ async function connectWallet() {
         // Check blockchain sync status
         await checkBlockchainSync();
         
-        // Update UI
+        // Update UI (with safe checks)
         const balance = await provider.getBalance(userAddress);
-        document.getElementById('connectButton').style.display = 'none';
-        document.getElementById('accountInfo').style.display = 'block';
-        document.getElementById('accountAddress').textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-        document.getElementById('accountBalance').textContent = `${ethers.utils.formatEther(balance).slice(0, 6)} ETH`;
+        
+        // Safe update UI elements (they might not exist on all pages)
+        const connectBtn = document.getElementById('connectButton');
+        if (connectBtn) connectBtn.style.display = 'none';
+        
+        const accountInfo = document.getElementById('accountInfo');
+        if (accountInfo) accountInfo.style.display = 'block';
+        
+        const accountAddress = document.getElementById('accountAddress');
+        if (accountAddress) accountAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        
+        const accountBalance = document.getElementById('accountBalance');
+        if (accountBalance) accountBalance.textContent = `${ethers.utils.formatEther(balance).slice(0, 6)} ETH`;
         
         localStorage.setItem('walletConnected', 'true');
         
@@ -648,11 +771,16 @@ async function createBookCard(id, bookInfo, owner) {
         const statusName = STATUS_NAMES[status] || 'Unknown';
         const statusEmoji = STATUS_EMOJIS[status] || '📄';
         const statusClass = `status-${statusName.toLowerCase()}`;
+        const isBorrowable = status === 0 || status === 4 || status === 5;
         
         // Get condition (default to 0 = New if not available)
         const condition = bookInfo.condition !== undefined ? Number(bookInfo.condition) : 0;
         const conditionName = CONDITION_NAMES[condition] || 'Unknown';
         const conditionEmoji = CONDITION_EMOJIS[condition] || '📄';
+
+        const imageBeforeHash = bookInfo.imageBeforeHash || bookInfo[5] || '';
+        const imageAfterHash = bookInfo.imageAfterHash || bookInfo[6] || '';
+        const coverUrl = resolveIpfsUrl(imageAfterHash || imageBeforeHash);
         
         // Parse createdAt safely
         let createdAt = 'N/A';
@@ -693,6 +821,7 @@ async function createBookCard(id, bookInfo, owner) {
     
         return `
             <div class="book-card">
+                <div style="height:160px; border-radius:8px; background-image:url('${coverUrl}'); background-size:cover; background-position:center;"></div>
                 <h3>${statusEmoji} ${bookInfo.name || 'Unknown'}</h3>
                 <p><strong>Description:</strong> ${bookInfo.description || 'No description'}</p>
                 <p><strong>📚 Book ID:</strong> <span style="background: #e3f2fd; padding: 2px 6px; border-radius: 3px; font-weight: bold;">${id}</span></p>
@@ -704,9 +833,15 @@ async function createBookCard(id, bookInfo, owner) {
                 <div class="book-condition" style="margin-top: 5px; font-size: 12px; color: #666;">
                     ${conditionEmoji} Condition: ${conditionName}
                 </div>
+                ${(imageBeforeHash || imageAfterHash) ? `
+                    <div style="margin-top:6px; font-size:11px; color:#0d47a1; display:flex; gap:10px;">
+                        ${imageBeforeHash ? `<a href="${resolveIpfsUrl(imageBeforeHash)}" target="_blank">📷 Before</a>` : ''}
+                        ${imageAfterHash ? `<a href="${resolveIpfsUrl(imageAfterHash)}" target="_blank">✅ After</a>` : ''}
+                    </div>` : ''
+                }
                 ${loanInfoHtml}
                 <div class="book-actions" style="margin-top: 10px;">
-                    ${status != 1 && status != 3 ? `<button onclick="quickBorrow(${id})" class="quick-btn">📚 Quick Borrow</button>` : ''}
+                    ${isBorrowable ? `<button onclick="quickBorrow(${id})" class="quick-btn">📚 Quick Borrow</button>` : ''}
                     ${status == 1 && userAddress && loanInfoHtml.includes(userAddress.slice(0, 6)) ? `<button onclick="quickReturn(${id})" class="quick-btn return-btn">📝 Quick Return</button>` : ''}
                 </div>
             </div>
@@ -797,8 +932,8 @@ async function loadAvailableBooksForBorrow() {
                 const bookInfo = await getBookInfoSafe(i);
                 const status = await bookNFTContract.getBookStatus(i);
                 
-                // Available books: status != 1 (Borrowed) and != 3 (Lost)
-                if (status != 1 && status != 3) {
+                // Borrowable books: Available, Old, New Arrival
+                if (status == 0 || status == 4 || status == 5) {
                     const option = document.createElement('option');
                     option.value = i;
                     option.textContent = `Book #${i}: ${bookInfo.name}`;
@@ -856,6 +991,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+    if (isAdminViewActive()) {
+        initBatchMintSection();
+        refreshEscrowActivity();
+        loadReputationFeed();
+    }
+});
+
+document.addEventListener('click', (event) => {
+    if (event.target.classList.contains('remove-batch-row')) {
+        const row = event.target.closest('.batch-mint-row');
+        const container = document.getElementById('batchMintRows');
+        if (row && container) {
+            row.remove();
+            if (container.children.length === 0) {
+                addBatchMintRow();
+            }
+        }
+    }
+});
+
 // Borrow book
 async function borrowBook() {
     if (!libraryCoreContract) {
@@ -873,6 +1029,17 @@ async function borrowBook() {
         
         if (!depositAmount || depositAmount <= 0) {
             throw new Error('Please enter a valid deposit amount');
+        }
+
+        if (typeof ensureProfileCompletion === 'function') {
+            const ready = await ensureProfileCompletion({
+                actionLabel: 'mượn sách',
+                redirectUrl: null
+            });
+            if (!ready) {
+                showNotification('Vui lòng hoàn thiện hồ sơ trước khi mượn sách.', 'warning');
+                return;
+            }
         }
         
         showLoading(true);
@@ -976,7 +1143,7 @@ async function borrowBook() {
         loadBooks();
         loadBorrowerInfo();
         loadAvailableBooksForBorrow();
-        if (document.getElementById('admin').classList.contains('active')) {
+        if (isAdminViewActive()) {
             setTimeout(refreshAdminStats, 500);
         }
         
@@ -1279,6 +1446,8 @@ async function returnBook() {
     try {
         const bookId = document.getElementById('returnBookId').value;
         const returnStatus = document.getElementById('returnStatus').value;
+        const imageHashInput = document.getElementById('returnImageHash');
+        const imageHash = sanitizeIpfsInput(imageHashInput ? imageHashInput.value : '');
         
         if (!bookId || bookId < 0) {
             throw new Error('Please enter a valid book ID');
@@ -1323,7 +1492,9 @@ async function returnBook() {
         }
         
         // Return book
-        const tx = await libraryCoreContract.returnBook(bookId, returnStatus);
+        const tx = imageHash
+            ? await libraryCoreContract.returnBookWithImage(bookId, returnStatus, imageHash)
+            : await libraryCoreContract.returnBook(bookId, returnStatus);
         
         showNotification('📝 Transaction sent! Waiting for confirmation...', 'info');
         
@@ -1372,7 +1543,7 @@ async function returnBook() {
         refreshProfile();
         loadReturnerInfo();
         loadBorrowedBooks();
-        if (document.getElementById('admin').classList.contains('active')) {
+        if (isAdminViewActive()) {
             setTimeout(refreshAdminStats, 500);
         }
         
@@ -1386,6 +1557,9 @@ async function returnBook() {
         showNotification(error.message, 'error');
     } finally {
         showLoading(false);
+        if (imageHashInput) {
+            imageHashInput.value = '';
+        }
     }
 }
 
@@ -1400,6 +1574,8 @@ async function mintBook() {
         const name = document.getElementById('bookName').value;
         const description = document.getElementById('bookDescription').value;
         const status = document.getElementById('bookStatus').value;
+        const imageHashInput = document.getElementById('bookImageHash');
+        const imageHash = sanitizeIpfsInput(imageHashInput ? imageHashInput.value : '');
         
         if (!name || !description) {
             throw new Error('Please fill in all fields');
@@ -1414,8 +1590,12 @@ async function mintBook() {
         // Get condition from UI (default to 0 = New)
         const condition = document.getElementById('bookCondition') ? document.getElementById('bookCondition').value : '0';
         
-        // Mint book with condition
-        const tx = await bookNFTContract.mintBookWithCondition(name, description, status, condition);
+        let tx;
+        if (imageHash) {
+            tx = await bookNFTContract.mintBookWithImage(name, description, status, condition, imageHash);
+        } else {
+            tx = await bookNFTContract.mintBookWithCondition(name, description, status, condition);
+        }
         
         showNotification('➕ Transaction sent! Waiting for confirmation...', 'info');
         
@@ -1448,10 +1628,13 @@ async function mintBook() {
         if (document.getElementById('bookCondition')) {
             document.getElementById('bookCondition').value = '0';
         }
+        if (imageHashInput) {
+            imageHashInput.value = '';
+        }
         
         // Refresh all data
         loadBooks();
-        if (document.getElementById('admin').classList.contains('active')) {
+        if (isAdminViewActive()) {
             setTimeout(refreshAdminStats, 500);
         }
         
@@ -1463,6 +1646,168 @@ async function mintBook() {
             <p>${error.message}</p>
         `;
         showNotification(error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function initBatchMintSection() {
+    const container = document.getElementById('batchMintRows');
+    if (!container) return;
+    if (!container.dataset.initialized) {
+        container.dataset.initialized = 'true';
+        container.innerHTML = '';
+        addBatchMintRow();
+        addBatchMintRow();
+    } else if (container.children.length === 0) {
+        addBatchMintRow();
+    }
+}
+
+function addBatchMintRow(defaultValues = {}) {
+    const container = document.getElementById('batchMintRows');
+    if (!container) return;
+    
+    batchMintRowCounter += 1;
+    const row = document.createElement('div');
+    row.className = 'batch-mint-row';
+    row.dataset.rowId = `batch-row-${batchMintRowCounter}`;
+    row.style.border = '1px solid #dee2e6';
+    row.style.borderRadius = '8px';
+    row.style.background = '#f8f9fa';
+    row.style.padding = '12px';
+    
+    const statusOptions = `
+        <option value="0">📗 Available</option>
+        <option value="1">📚 Borrowed</option>
+        <option value="2">📙 Damaged</option>
+        <option value="3">📕 Lost</option>
+        <option value="4">📘 Old</option>
+        <option value="5">📒 New</option>
+    `;
+    
+    row.innerHTML = `
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+            <div>
+                <label style="font-size:12px; color:#6c757d;">Book Name</label>
+                <input type="text" class="batch-name" placeholder="e.g. The Pragmatic Programmer" value="${defaultValues.name || ''}">
+            </div>
+            <div>
+                <label style="font-size:12px; color:#6c757d;">Description</label>
+                <input type="text" class="batch-description" placeholder="Short description" value="${defaultValues.description || ''}">
+            </div>
+            <div>
+                <label style="font-size:12px; color:#6c757d;">Status</label>
+                <select class="batch-status">
+                    ${statusOptions}
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button type="button" class="action-btn remove-batch-row" style="background:#f8d7da; color:#721c24; width:100%;">✖ Remove</button>
+            </div>
+        </div>
+    `;
+    
+    const statusSelect = row.querySelector('.batch-status');
+    if (statusSelect) {
+        statusSelect.value = typeof defaultValues.status !== 'undefined' ? defaultValues.status : '0';
+    }
+    
+    container.appendChild(row);
+}
+
+function collectBatchMintData() {
+    const container = document.getElementById('batchMintRows');
+    if (!container) return [];
+    
+    const rows = Array.from(container.querySelectorAll('.batch-mint-row'));
+    return rows.map(row => {
+        const name = row.querySelector('.batch-name')?.value?.trim() || '';
+        const description = row.querySelector('.batch-description')?.value?.trim() || '';
+        const statusValue = row.querySelector('.batch-status')?.value;
+        return {
+            name,
+            description,
+            status: statusValue !== undefined ? parseInt(statusValue, 10) : 0
+        };
+    }).filter(entry => entry.name && entry.description);
+}
+
+function extractMintedIds(receipt) {
+    if (!receipt || !receipt.events) return [];
+    const ids = [];
+    receipt.events.forEach(event => {
+        if (event.event === 'BookMinted' && event.args?.tokenId) {
+            ids.push(event.args.tokenId.toString());
+        } else if (event.event === 'Transfer' && event.args?.from === ethers.constants.AddressZero) {
+            ids.push(event.args.tokenId.toString());
+        }
+    });
+    return [...new Set(ids)];
+}
+
+async function batchMintBooks() {
+    if (!bookNFTContract) {
+        showNotification('Please connect your wallet first', 'error');
+        return;
+    }
+    
+    const entries = collectBatchMintData();
+    if (entries.length === 0) {
+        showNotification('Please fill at least one row with book name and description', 'error');
+        return;
+    }
+    
+    showLoading(true);
+    
+    try {
+        const names = entries.map(entry => entry.name);
+        const descriptions = entries.map(entry => entry.description);
+        const statuses = entries.map(entry => entry.status);
+        
+        const tx = await bookNFTContract.batchMintBooks(names, descriptions, statuses);
+        showNotification('🚀 Batch mint transaction sent! Waiting for confirmation...', 'info');
+        
+        const receipt = await tx.wait();
+        const mintedIds = extractMintedIds(receipt);
+        
+        const resultDiv = document.getElementById('adminResult');
+        if (resultDiv) {
+            resultDiv.className = 'result-section success';
+            resultDiv.innerHTML = `
+                <h4>✅ Batch mint successful!</h4>
+                <p><strong>Total Books:</strong> ${entries.length}</p>
+                ${mintedIds.length ? `<p><strong>New IDs:</strong> ${mintedIds.join(', ')}</p>` : ''}
+                <p><strong>Transaction:</strong> ${receipt.transactionHash}</p>
+            `;
+        }
+        
+        showNotification(`✅ Minted ${entries.length} book(s) successfully`, 'success');
+        
+        const container = document.getElementById('batchMintRows');
+        if (container) {
+            container.innerHTML = '';
+            delete container.dataset.initialized;
+            initBatchMintSection();
+        }
+        
+        loadBooks();
+        refreshAdminStats();
+        loadBooksForUpdate();
+        
+    } catch (error) {
+        console.error('❌ Batch mint failed:', error);
+        const message = error?.message || 'Failed to batch mint books';
+        showNotification(message, 'error');
+        
+        const resultDiv = document.getElementById('adminResult');
+        if (resultDiv) {
+            resultDiv.className = 'result-section error';
+            resultDiv.innerHTML = `
+                <h4>❌ Batch mint failed</h4>
+                <p>${message}</p>
+            `;
+        }
     } finally {
         showLoading(false);
     }
@@ -1583,7 +1928,7 @@ async function updateBookStatus() {
         
         // Refresh all data
         loadBooks();
-        if (document.getElementById('admin').classList.contains('active')) {
+        if (isAdminViewActive()) {
             setTimeout(refreshAdminStats, 500);
         }
         
@@ -1759,8 +2104,8 @@ async function loadLibraryStats() {
         for (let i = 0; i < Number(nextBookId); i++) {
             try {
                 const status = await bookNFTContract.getBookStatus(i);
-                // Available books: status != 1 (Borrowed) and != 3 (Lost)
-                if (status != 1 && status != 3) availableCount++;
+                // Borrowable books: Available / Old / New
+                if (status == 0 || status == 4 || status == 5) availableCount++;
                 if (status == 1) {
                     borrowedCount++;
                     const loanInfo = await libraryCoreContract.loanInfos(i);
@@ -1934,7 +2279,7 @@ async function updateBookCondition() {
         showNotification('✅ Book condition updated successfully!', 'success');
         
         loadBooks();
-        if (document.getElementById('admin').classList.contains('active')) {
+        if (isAdminViewActive()) {
             setTimeout(refreshAdminStats, 500);
         }
         
@@ -1985,6 +2330,31 @@ async function loadContractStatus() {
 
 // Load EscrowVault info
 async function loadEscrowVaultInfo() {
+    const escrowInfoDiv = document.getElementById('escrowVaultInfo');
+    
+    // ⭐ Try to load from global scope if not available
+    if (!escrowVaultContract) {
+        if (window.blockchainBooks && window.blockchainBooks.escrowVaultContract) {
+            escrowVaultContract = window.blockchainBooks.escrowVaultContract;
+            console.log('✅ Loaded EscrowVault from window.blockchainBooks');
+        } else if (window.escrowVaultContract) {
+            escrowVaultContract = window.escrowVaultContract;
+            console.log('✅ Loaded EscrowVault from window.escrowVaultContract');
+        }
+    }
+    
+    if (escrowInfoDiv && !escrowVaultContract) {
+        escrowInfoDiv.innerHTML = `
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #ffc107;">
+                <h4>⚠️ EscrowVault Not Loaded</h4>
+                <p style="color: #856404;">EscrowVault contract is not loaded in the current session.</p>
+                <small style="color: #6c757d; display: block; margin-top: 10px;">
+                    💡 Please refresh the page (Ctrl+F5) or reconnect your wallet.
+                </small>
+            </div>
+        `;
+        return;
+    }
     if (!escrowVaultContract || !libraryCoreContract || !userAddress) return;
     
     try {
@@ -2063,3 +2433,340 @@ async function withdrawAllPenalty() {
         showLoading(false);
     }
 }
+
+async function checkEscrowDeposit() {
+    const resultDiv = document.getElementById('escrowLookupResult');
+    if (!resultDiv) return;
+    
+    if (!escrowVaultContract) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<p style="color:#f39c12;">⚠️ EscrowVault not deployed in current configuration.<br/>Deposits are managed directly in LibraryCore contract.<br/>Use loanInfos() function to check deposit status.</p>';
+        return;
+    }
+    
+    const addressInput = document.getElementById('escrowLookupAddress');
+    const bookInput = document.getElementById('escrowLookupBookId');
+    const wallet = addressInput?.value?.trim();
+    const bookId = bookInput?.value ? parseInt(bookInput.value, 10) : NaN;
+    
+    if (!wallet || !ethers.utils.isAddress(wallet)) {
+        showNotification('Please enter a valid wallet address', 'error');
+        return;
+    }
+    if (isNaN(bookId) || bookId < 0) {
+        showNotification('Please enter a valid book ID', 'error');
+        return;
+    }
+    
+    try {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<p>Checking deposit...</p>';
+        
+        const amount = await escrowVaultContract.getDeposit(wallet, bookId);
+        const formatted = parseFloat(ethers.utils.formatEther(amount));
+        
+        if (formatted === 0) {
+            resultDiv.innerHTML = `<p>No deposit locked for <strong>${shortAddress(wallet)}</strong> on book #${bookId}.</p>`;
+        } else {
+            resultDiv.innerHTML = `
+                <p><strong>${formatted.toFixed(4)} ETH</strong> currently locked for ${shortAddress(wallet)} on book #${bookId}.</p>
+                <small style="color:#6c757d;">Use return flows in LibraryCore to release this deposit.</small>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to check deposit:', error);
+        resultDiv.innerHTML = `<p style="color:#e74c3c;">Failed to check deposit: ${error.message}</p>`;
+    }
+}
+
+function renderEscrowActivity() {
+    const logDiv = document.getElementById('escrowActivityLog');
+    if (!logDiv) return;
+    
+    if (!escrowActivityEntries.length) {
+        logDiv.innerHTML = '<p style="color:#6c757d; margin:0;">No escrow activity found.</p>';
+        return;
+    }
+    
+    logDiv.innerHTML = escrowActivityEntries.map(entry => {
+        const color = entry.type === 'Locked' ? '#f39c12' : '#27ae60';
+        const icon = entry.type === 'Locked' ? '🔐' : '💸';
+        return `
+            <div style="border-bottom:1px solid #eee; padding:8px 0;">
+                <div style="font-weight:600; color:${color};">${icon} ${entry.type} · Book #${entry.bookId}</div>
+                <div style="font-size:13px; color:#333;">
+                    ${shortAddress(entry.user)} · ${parseFloat(entry.amount).toFixed(4)} ETH
+                </div>
+                <div style="font-size:12px; color:#6c757d;">
+                    Block ${entry.blockNumber} · ${formatTimestamp(entry.timestamp)}<br>
+                    Tx: ${entry.txHash ? shortAddress(entry.txHash, 6, 6) : 'N/A'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function appendEscrowActivityEntry(entry) {
+    escrowActivityEntries = [entry, ...escrowActivityEntries].slice(0, MAX_ACTIVITY_ENTRIES);
+    renderEscrowActivity();
+}
+
+function startEscrowEventListeners() {
+    // ⭐ Try to get escrowVaultContract from multiple sources
+    if (!escrowVaultContract) {
+        if (window.blockchainBooks?.escrowVaultContract) {
+            escrowVaultContract = window.blockchainBooks.escrowVaultContract;
+            window.escrowVaultContract = escrowVaultContract;
+            console.log('✅ Using EscrowVault from blockchain-books.js in event listeners');
+        } else if (window.escrowVaultContract) {
+            escrowVaultContract = window.escrowVaultContract;
+            console.log('✅ Using EscrowVault from window.escrowVaultContract');
+        }
+    }
+    
+    if (!escrowVaultContract) {
+        console.log('⚠️ Escrow event listener disabled - EscrowVault not loaded yet');
+        return;
+    }
+    if (escrowVaultContract.__escrowListenerAttached) return;
+    
+    escrowVaultContract.on('Locked', (user, bookId, amount, event) => {
+        const entry = {
+            type: 'Locked',
+            user: user.toString(),
+            bookId: bookId.toString(),
+            amount: ethers.utils.formatEther(amount),
+            blockNumber: event.blockNumber,
+            txHash: event.transactionHash,
+            timestamp: Date.now()
+        };
+        appendEscrowActivityEntry(entry);
+        if (userAddress && userAddress.toLowerCase() === user.toLowerCase()) {
+            showNotification(`💰 Deposit locked for Book #${bookId}`, 'info');
+        }
+    });
+    
+    escrowVaultContract.on('Released', (to, bookId, amount, event) => {
+        const entry = {
+            type: 'Released',
+            user: to.toString(),
+            bookId: bookId.toString(),
+            amount: ethers.utils.formatEther(amount),
+            blockNumber: event.blockNumber,
+            txHash: event.transactionHash,
+            timestamp: Date.now()
+        };
+        appendEscrowActivityEntry(entry);
+        if (userAddress && userAddress.toLowerCase() === to.toLowerCase()) {
+            showNotification(`💸 Deposit released for Book #${bookId}`, 'success');
+        }
+    });
+    
+    escrowVaultContract.__escrowListenerAttached = true;
+}
+
+async function refreshEscrowActivity() {
+    const logDiv = document.getElementById('escrowActivityLog');
+    if (!logDiv) return;
+    
+    if (!escrowVaultContract) {
+        logDiv.innerHTML = '<p style="color:#f39c12; margin:0;">⚠️ EscrowVault not deployed. Deposits managed in LibraryCore.</p>';
+        return;
+    }
+    
+    if (!provider) {
+        logDiv.innerHTML = '<p style="color:#6c757d; margin:0;">Connect wallet to load escrow activity.</p>';
+        return;
+    }
+    
+    logDiv.innerHTML = '<p style="margin:0;">Loading escrow events...</p>';
+    
+    try {
+        const latestBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(latestBlock - 5000, 0);
+        
+        const [lockedEvents, releasedEvents] = await Promise.all([
+            escrowVaultContract.queryFilter(escrowVaultContract.filters.Locked(), fromBlock, 'latest'),
+            escrowVaultContract.queryFilter(escrowVaultContract.filters.Released(), fromBlock, 'latest')
+        ]);
+        
+        const combined = [
+            ...lockedEvents.map(event => ({ event, type: 'Locked' })),
+            ...releasedEvents.map(event => ({ event, type: 'Released' }))
+        ];
+        
+        combined.sort((a, b) => b.event.blockNumber - a.event.blockNumber);
+        const recent = combined.slice(0, MAX_ACTIVITY_ENTRIES);
+        
+        const blockNumbers = [...new Set(recent.map(item => item.event.blockNumber))];
+        const blockCache = {};
+        await Promise.all(blockNumbers.map(async (blockNumber) => {
+            const block = await provider.getBlock(blockNumber);
+            blockCache[blockNumber] = block ? block.timestamp * 1000 : null;
+        }));
+        
+        escrowActivityEntries = recent.map(({ event, type }) => {
+            const args = event.args || [];
+            const userField = type === 'Locked' ? (args.user || args[0]) : (args.to || args[0]);
+            const bookField = args.bookId || args[1];
+            const amountField = args.amount || args[2] || 0;
+            
+            return {
+                type,
+                user: userField ? userField.toString() : 'N/A',
+                bookId: bookField !== undefined ? bookField.toString() : '-',
+                amount: ethers.utils.formatEther(amountField),
+                blockNumber: event.blockNumber,
+                txHash: event.transactionHash,
+                timestamp: blockCache[event.blockNumber]
+            };
+        });
+        
+        renderEscrowActivity();
+    } catch (error) {
+        console.error('Failed to load escrow activity:', error);
+        logDiv.innerHTML = `<p style="color:#e74c3c;">Failed to load escrow activity: ${error.message}</p>`;
+    }
+}
+
+async function loadReputationFeed(limit = 10) {
+    const feedDiv = document.getElementById('reputationFeed');
+    if (!feedDiv) return;
+    
+    if (!libraryCoreContract || !provider) {
+        feedDiv.innerHTML = '<p style="color:#6c757d; margin:0;">Connect wallet to view reputation activity.</p>';
+        return;
+    }
+    
+    feedDiv.innerHTML = '<p style="margin:0;">Loading reputation events...</p>';
+    
+    try {
+        // ⚠️ LibraryCore does NOT have ReputationUpdated event
+        // Display message instead of trying to query non-existent event
+        feedDiv.innerHTML = '<p style="color:#6c757d; margin:0;">📊 Reputation tracking is tracked via BookBorrowed and BookReturned events.<br/>Check your reputation score in the Profile section.</p>';
+        return;
+        
+        /* DISABLED - ReputationUpdated event not available in LibraryCore
+        const latestBlock = await provider.getBlockNumber();
+        const fromBlock = Math.max(latestBlock - 5000, 0);
+        const events = await libraryCoreContract.queryFilter(libraryCoreContract.filters.ReputationUpdated(), fromBlock, 'latest');
+        const trimmed = events.slice(-limit).reverse();
+        
+        const blockNumbers = [...new Set(trimmed.map(event => event.blockNumber))];
+        const blockCache = {};
+        await Promise.all(blockNumbers.map(async (blockNumber) => {
+            const block = await provider.getBlock(blockNumber);
+            blockCache[blockNumber] = block ? block.timestamp * 1000 : null;
+        }));
+        
+        reputationEntries = trimmed.map(event => {
+            const user = (event.args?.user || event.args?.[0])?.toString() || '-';
+            const oldRep = ethers.BigNumber.from(event.args?.oldReputation ?? event.args?.[1] ?? 0);
+            const newRep = ethers.BigNumber.from(event.args?.newReputation ?? event.args?.[2] ?? 0);
+            const delta = newRep.sub(oldRep);
+            
+            return {
+                user,
+                oldRep: oldRep.toString(),
+                newRep: newRep.toString(),
+                delta: delta.toString(),
+                blockNumber: event.blockNumber,
+                txHash: event.transactionHash,
+                timestamp: blockCache[event.blockNumber]
+            };
+        });
+        
+        renderReputationFeed();
+        */
+    } catch (error) {
+        console.error('Failed to load reputation feed:', error);
+        feedDiv.innerHTML = `<p style="color:#e74c3c;">Failed to load reputation feed: ${error.message}</p>`;
+    }
+}
+
+function renderReputationFeed() {
+    const feedDiv = document.getElementById('reputationFeed');
+    if (!feedDiv) return;
+    
+    if (!reputationEntries.length) {
+        feedDiv.innerHTML = '<p style="color:#6c757d; margin:0;">No reputation updates yet.</p>';
+        return;
+    }
+    
+    feedDiv.innerHTML = reputationEntries.map(entry => {
+        const delta = parseInt(entry.delta, 10);
+        const badgeColor = delta >= 0 ? '#27ae60' : '#c0392b';
+        const icon = delta >= 0 ? '📈' : '📉';
+        const deltaLabel = delta > 0 ? `+${delta}` : `${delta}`;
+        
+        return `
+            <div style="border-bottom:1px solid #eee; padding:8px 0;">
+                <div style="font-weight:600; color:${badgeColor};">${icon} ${deltaLabel} pts</div>
+                <div style="font-size:13px; color:#333;">
+                    ${shortAddress(entry.user)} · Now ${entry.newRep} pts
+                </div>
+                <div style="font-size:12px; color:#6c757d;">
+                    Block ${entry.blockNumber} · ${formatTimestamp(entry.timestamp)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function appendReputationEntry(entry) {
+    reputationEntries = [entry, ...reputationEntries].slice(0, MAX_ACTIVITY_ENTRIES);
+    renderReputationFeed();
+}
+
+function startReputationListener() {
+    if (!libraryCoreContract || libraryCoreContract.__reputationListenerAttached) return;
+    
+    // ⚠️ LibraryCore does NOT have ReputationUpdated event
+    // Reputation changes are embedded in BookBorrowed and BookReturned events
+    console.log('📊 Reputation listener disabled - LibraryCore does not emit ReputationUpdated events');
+    console.log('   Reputation changes are tracked via BookBorrowed/BookReturned events');
+    
+    /* DISABLED - ReputationUpdated event not available in LibraryCore
+    libraryCoreContract.on('ReputationUpdated', (user, oldRep, newRep, event) => {
+        const oldValue = ethers.BigNumber.from(oldRep);
+        const newValue = ethers.BigNumber.from(newRep);
+        const delta = newValue.sub(oldValue);
+        
+        const entry = {
+            user: user.toString(),
+            oldRep: oldValue.toString(),
+            newRep: newValue.toString(),
+            delta: delta.toString(),
+            blockNumber: event.blockNumber,
+            txHash: event.transactionHash,
+            timestamp: Date.now()
+        };
+        
+        appendReputationEntry(entry);
+        
+        if (userAddress && userAddress.toLowerCase() === user.toLowerCase()) {
+            const deltaNum = parseInt(delta.toString(), 10);
+            const tone = deltaNum >= 0 ? 'success' : 'error';
+            showNotification(`⭐ Reputation ${deltaNum >= 0 ? 'increased' : 'decreased'} to ${newValue.toString()} pts`, tone);
+            refreshProfile();
+        }
+    });
+    
+    libraryCoreContract.__reputationListenerAttached = true;
+    */
+}
+
+// ========================================
+// EXPOSE ADMIN FUNCTIONS TO GLOBAL SCOPE
+// (Needed for onclick handlers in HTML)
+// ========================================
+window.refreshAdminStats = refreshAdminStats;
+window.pauseContract = pauseContract;
+window.unpauseContract = unpauseContract;
+window.updateBookCondition = updateBookCondition;
+window.mintBook = mintBook;
+window.batchMintBooks = batchMintBooks;
+window.updateBookStatus = updateBookStatus;
+window.selectBookForUpdate = selectBookForUpdate;
+window.withdrawAllPenalty = withdrawAllPenalty;
+window.checkEscrowDeposit = checkEscrowDeposit;

@@ -116,6 +116,41 @@ async function connectMetaMask() {
             const account = accounts[0];
             console.log('MetaMask connected:', account);
             
+            // ✅ CRITICAL FIX: Update window.walletState for blockchain integration
+            if (typeof ethers !== 'undefined') {
+                if (!window.walletState) {
+                    window.walletState = {
+                        provider: null,
+                        signer: null,
+                        address: null,
+                        balance: null,
+                        isConnected: false
+                    };
+                }
+                window.walletState.provider = new ethers.providers.Web3Provider(window.ethereum);
+                window.walletState.signer = window.walletState.provider.getSigner();
+                window.walletState.address = account;
+                window.walletState.isConnected = true;
+                
+                // Get balance
+                try {
+                    const balance = await window.walletState.provider.getBalance(account);
+                    window.walletState.balance = ethers.utils.formatEther(balance);
+                } catch (e) {
+                    console.warn('Could not get balance:', e);
+                }
+                
+                // Dispatch wallet connected event
+                const event = new CustomEvent('walletConnected', {
+                    detail: {
+                        address: account,
+                        balance: window.walletState.balance
+                    }
+                });
+                window.dispatchEvent(event);
+                console.log('📢 Dispatched walletConnected event from auth.js');
+            }
+            
             // Store MetaMask user
             const metamaskUser = {
                 address: account,

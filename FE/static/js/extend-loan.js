@@ -2,6 +2,8 @@
 // EXTEND LOAN - BLOCKCHAIN INTEGRATION
 // ========================================
 
+const DEFAULT_EXTENSION_FEE = ethers.utils.parseEther('0.01');
+
 /**
  * Extend loan for a borrowed book
  */
@@ -28,9 +30,9 @@ async function extendLoanForBook(bookId, bookName) {
         const currentDueDate = new Date(Number(loanInfo.dueDate || loanInfo[2]) * 1000);
         const newDueDate = new Date(currentDueDate.getTime() + (14 * 24 * 60 * 60 * 1000)); // +14 days
         
-        // Get extension fee
-        const EXTENSION_FEE = await libraryCoreContract.EXTENSION_FEE();
-        const feeEth = ethers.utils.formatEther(EXTENSION_FEE);
+        // Get extension fee (fallback 0.01 ETH if contract does not expose constant)
+        const extensionFeeWei = await getExtensionFee(libraryCoreContract);
+        const feeEth = ethers.utils.formatEther(extensionFeeWei);
         
         // Confirm extension
         const confirmMsg = `
@@ -53,7 +55,7 @@ Do you want to extend this loan?
         
         // Call extendLoan function
         const tx = await contractWithSigner.extendLoan(bookId, {
-            value: EXTENSION_FEE
+            value: extensionFeeWei
         });
         
         alert(`⏳ Transaction sent! Waiting for confirmation...`);
@@ -101,4 +103,18 @@ Refreshing your orders...`);
 window.extendLoanForBook = extendLoanForBook;
 
 console.log('✅ Extend Loan module loaded');
+
+async function getExtensionFee(contract) {
+    if (contract && typeof contract.EXTENSION_FEE === 'function') {
+        try {
+            const fee = await contract.EXTENSION_FEE();
+            if (fee && fee.gt(0)) {
+                return fee;
+            }
+        } catch (error) {
+            console.warn('EXTENSION_FEE constant not available on contract, using default', error);
+        }
+    }
+    return DEFAULT_EXTENSION_FEE;
+}
 

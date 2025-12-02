@@ -28,5 +28,28 @@
 *.md
 !README.md
 
+# Test files
+/test
+test-*.md
+*test*.py
 
+# Batch scripts
+*.bat
 
+# Kiro specs and documentation
+/.kiro/specs
+/docs
+
+# Development tools
+/dev-tools
+
+# Web test files
+/web/test-*.html
+/web/minimal.html
+
+# Old/deprecated contracts - chỉ giữ contracts chính
+/contracts/LibraryCore.sol
+/contracts/LibraryCore.minimal.sol
+/contracts/LibraryCoreV2.sol
+/contracts/BookNFT.minimal.sol
+/contracts/UserProfile.sol

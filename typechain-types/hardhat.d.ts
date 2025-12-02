@@ -94,9 +94,25 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.LibraryCoreV2__factory>;
     getContractFactory(
+      name: "LibraryCoreV3",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.LibraryCoreV3__factory>;
+    getContractFactory(
+      name: "RoleManager",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.RoleManager__factory>;
+    getContractFactory(
+      name: "UserCart",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.UserCart__factory>;
+    getContractFactory(
       name: "UserProfile",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.UserProfile__factory>;
+    getContractFactory(
+      name: "UserProfileV2",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.UserProfileV2__factory>;
 
     getContractAt(
       name: "Ownable",
@@ -199,10 +215,30 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.LibraryCoreV2>;
     getContractAt(
+      name: "LibraryCoreV3",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.LibraryCoreV3>;
+    getContractAt(
+      name: "RoleManager",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.RoleManager>;
+    getContractAt(
+      name: "UserCart",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.UserCart>;
+    getContractAt(
       name: "UserProfile",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.UserProfile>;
+    getContractAt(
+      name: "UserProfileV2",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.UserProfileV2>;
 
     deployContract(
       name: "Ownable",
@@ -285,9 +321,25 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.LibraryCoreV2>;
     deployContract(
+      name: "LibraryCoreV3",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.LibraryCoreV3>;
+    deployContract(
+      name: "RoleManager",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.RoleManager>;
+    deployContract(
+      name: "UserCart",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UserCart>;
+    deployContract(
       name: "UserProfile",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.UserProfile>;
+    deployContract(
+      name: "UserProfileV2",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UserProfileV2>;
 
     deployContract(
       name: "Ownable",
@@ -390,10 +442,30 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.LibraryCoreV2>;
     deployContract(
+      name: "LibraryCoreV3",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.LibraryCoreV3>;
+    deployContract(
+      name: "RoleManager",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.RoleManager>;
+    deployContract(
+      name: "UserCart",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UserCart>;
+    deployContract(
       name: "UserProfile",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.UserProfile>;
+    deployContract(
+      name: "UserProfileV2",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.UserProfileV2>;
 
     // default types
     getContractFactory(

@@ -7,4 +7,8 @@ export { BookNFT__factory } from "./BookNFT__factory";
 export { EscrowVault__factory } from "./EscrowVault__factory";
 export { LibraryCore__factory } from "./LibraryCore__factory";
 export { LibraryCoreV2__factory } from "./LibraryCoreV2__factory";
+export { LibraryCoreV3__factory } from "./LibraryCoreV3__factory";
+export { RoleManager__factory } from "./RoleManager__factory";
+export { UserCart__factory } from "./UserCart__factory";
 export { UserProfile__factory } from "./UserProfile__factory";
+export { UserProfileV2__factory } from "./UserProfileV2__factory";

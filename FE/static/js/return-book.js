@@ -63,6 +63,23 @@ function showReturnModal(bookId, bookName) {
                         </div>
                     </div>
                     
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600; color:#333;">
+                            📁 Evidence Image (IPFS CID or URL, optional)
+                        </label>
+                        <input type="text" id="returnEvidenceHash" placeholder="ipfs://... or https://gateway/ipfs/..." style="
+                            width:100%;
+                            padding:12px;
+                            border:2px solid #ddd;
+                            border-radius:8px;
+                            font-size:14px;
+                            background:white;
+                        ">
+                        <small style="color:#6c757d; display:block; margin-top:6px;">
+                            Dán CID/IPFS URL sau khi upload ảnh lên IPFS (Pinata, NFT.Storage...). Nếu bỏ trống sẽ trả sách theo luồng cũ.
+                        </small>
+                    </div>
+                    
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button id="cancelReturn" style="
                             padding: 12px 24px;
@@ -97,6 +114,7 @@ function showReturnModal(bookId, bookName) {
         const cancelBtn = document.getElementById('cancelReturn');
         const confirmBtn = document.getElementById('confirmReturn');
         const conditionSelect = document.getElementById('returnCondition');
+        const evidenceInput = document.getElementById('returnEvidenceHash');
         
         // Cancel handler
         cancelBtn.onclick = () => {
@@ -107,8 +125,9 @@ function showReturnModal(bookId, bookName) {
         // Confirm handler
         confirmBtn.onclick = () => {
             const condition = parseInt(conditionSelect.value);
+            const imageHash = evidenceInput?.value?.trim() || '';
             modal.remove();
-            resolve(condition);
+            resolve({ condition, imageHash });
         };
         
         // Click outside to close
@@ -133,13 +152,15 @@ async function returnBookToBlockchain(bookId, bookName) {
         }
         
         // Show condition selector modal
-        let conditionAfter;
+        let returnPayload;
         try {
-            conditionAfter = await showReturnModal(bookId, bookName);
+            returnPayload = await showReturnModal(bookId, bookName);
         } catch (error) {
             console.log('Return cancelled by user');
             return;
         }
+        const conditionAfter = returnPayload.condition;
+        const imageHash = returnPayload.imageHash;
         
         // Initialize contracts
         await initBlockchainContracts();
@@ -161,7 +182,9 @@ async function returnBookToBlockchain(bookId, bookName) {
         console.log(`📤 Returning book ${bookId} with condition ${conditionAfter}...`);
         
         // Call returnBook function
-        const tx = await contractWithSigner.returnBook(bookId, conditionAfter);
+        const tx = imageHash
+            ? await contractWithSigner.returnBookWithImage(bookId, conditionAfter, imageHash)
+            : await contractWithSigner.returnBook(bookId, conditionAfter);
         
         console.log(`⏳ Transaction sent: ${tx.hash}`);
         

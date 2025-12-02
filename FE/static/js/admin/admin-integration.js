@@ -32,6 +32,15 @@ function handleAdminQueryParams() {
  */
 async function loadBookForEdit(bookId) {
     try {
+        // Check wallet first
+        if (!window.walletState || !window.walletState.isConnected) {
+            alert('Please connect MetaMask first to edit books!');
+            await connectMetaMask();
+            if (!window.walletState || !window.walletState.isConnected) {
+                return;
+            }
+        }
+        
         await initBlockchainContracts();
         
         if (!window.blockchainBooks.bookNFTContract) {

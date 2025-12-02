@@ -16,6 +16,8 @@
     <!-- Blockchain Integration -->
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
     <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/abis.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/blockchain-cart-helpers.js') }}"></script>
 
     <div class="filter-nav">
         <h3 class="short-stack-regular"><i class='bx bx-filter-alt'></i> FILTER</h3>
@@ -87,7 +89,7 @@
         // AUTO-LOAD BLOCKCHAIN BOOKS ON PAGE LOAD
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🔄 Loading books from blockchain...');
-            await loadBlockchainBooks();
+            await loadBooksFromBlockchain();
         });
     </script>
     

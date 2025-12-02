@@ -266,39 +266,6 @@ async function handleCreateProfile(event) {
 }
 
 /**
- * Check if a book has a pending return request
- */
-async function checkPendingReturnRequest(bookId, borrowerAddress) {
-    try {
-        const libraryCoreContract = window.blockchainBooks.libraryCoreContract;
-        
-        // Get all pending return requests
-        const pendingRequestIds = await libraryCoreContract.getPendingReturnRequests();
-        
-        // Check if any pending request is for this book and borrower
-        for (const requestId of pendingRequestIds) {
-            const request = await libraryCoreContract.returnRequests(requestId);
-            
-            if (Number(request.bookId) === bookId && 
-                request.borrower.toLowerCase() === borrowerAddress.toLowerCase() &&
-                request.isPending) {
-                return {
-                    hasPending: true,
-                    requestId: Number(requestId),
-                    proposedCondition: Number(request.proposedCondition),
-                    requestedAt: new Date(Number(request.requestedAt) * 1000)
-                };
-            }
-        }
-        
-        return { hasPending: false };
-    } catch (error) {
-        console.warn(`Failed to check pending return request for book ${bookId}:`, error);
-        return { hasPending: false };
-    }
-}
-
-/**
  * Load borrowed books from LibraryCoreV3 (same as before)
  */
 async function loadBorrowedBooksFromBlockchain(userAddress, retryCount = 0) {
@@ -391,9 +358,6 @@ async function loadBorrowedBooksFromBlockchain(userAddress, retryCount = 0) {
                     continue;
                 }
                 
-                // ✅ Check for pending return request
-                const pendingStatus = await checkPendingReturnRequest(bookIdNum, userAddress);
-                
                 // Calculate due date and overdue status
                 const dueDate = new Date(Number(loanInfo.dueDate) * 1000);
                 const now = new Date();
@@ -408,11 +372,10 @@ async function loadBorrowedBooksFromBlockchain(userAddress, retryCount = 0) {
                     deposit: ethers.utils ? ethers.utils.formatEther(loanInfo.deposit) : ethers.formatEther(loanInfo.deposit),
                     isReturned: loanInfo.isReturned,
                     isOverdue: isOverdue,
-                    borrower: loanInfo.borrower,
-                    pendingReturn: pendingStatus
+                    borrower: loanInfo.borrower
                 });
                 
-                console.log(`✅ Loaded borrowed book #${bookIdNum}: ${bookInfo.name}`, pendingStatus.hasPending ? '(Pending Return)' : '');
+                console.log(`✅ Loaded borrowed book #${bookIdNum}: ${bookInfo.name}`);
                 
             } catch (error) {
                 console.warn(`⚠️ Failed to load book ${bookId}:`, error.message);
@@ -452,31 +415,14 @@ function renderBorrowedBooks(borrowedBooks) {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         const daysOverdue = book.isOverdue ? Math.abs(diffDays) : 0;
-        const latePenalty = daysOverdue * 0.002; // 0.002 ETH per day (PENALTY_LATE_PER_DAY = 0.001 ETH)
-        const damagePenalty = 0; // No damage penalty until admin approves
-        const totalPenalty = latePenalty + damagePenalty;
-        const estimatedRefund = Math.max(0, parseFloat(book.deposit) - totalPenalty);
+        const latePenalty = daysOverdue * 0.02;
+        const estimatedRefund = Math.max(0, parseFloat(book.deposit) - latePenalty);
         
-        // Determine status based on pending return request
-        let statusColor, statusText;
-        if (book.pendingReturn && book.pendingReturn.hasPending) {
-            statusColor = '#FF9800'; // Orange for pending
-            statusText = 'Pending Approval';
-        } else if (book.isReturned) {
-            statusColor = '#4CAF50';
-            statusText = 'Returned';
-        } else if (book.isOverdue) {
-            statusColor = '#F44336';
-            statusText = `Overdue (${daysOverdue} days)`;
-        } else {
-            statusColor = '#2196F3';
-            statusText = 'Active';
-        }
-        
-        const conditionNames = ['Available', 'Borrowed', 'Old', 'Damaged', 'Lost'];
+        const statusColor = book.isReturned ? '#4CAF50' : (book.isOverdue ? '#F44336' : '#FF9800');
+        const statusText = book.isReturned ? 'Returned' : (book.isOverdue ? `Overdue (${daysOverdue} days)` : 'Active');
         
         booksHTML += `
-            <div class="borrowed-book" style="margin-bottom: 20px; padding: 20px; background: ${book.isOverdue ? '#fff3f3' : (book.pendingReturn?.hasPending ? '#fff8e1' : 'white')}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid ${book.isOverdue ? '#F44336' : (book.pendingReturn?.hasPending ? '#FF9800' : 'transparent')}; display: flex; justify-content: space-between; align-items: center;">
+            <div class="borrowed-book" style="margin-bottom: 20px; padding: 20px; background: ${book.isOverdue ? '#fff3f3' : 'white'}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 2px solid ${book.isOverdue ? '#F44336' : 'transparent'}; display: flex; justify-content: space-between; align-items: center;">
                 <div class="book-info" style="display: flex; gap: 16px; align-items: center; flex: 1;">
                     <img src="/model_images/muado.jpg" alt="Book Cover" style="width: 80px; height: 100px; object-fit: cover; border-radius: 8px;">
                     <div class="details">
@@ -494,22 +440,11 @@ function renderBorrowedBooks(borrowedBooks) {
                         <p style="margin: 4px 0; font-size: 13px; color: #666;">
                             <strong>Deposit:</strong> ${book.deposit} ETH
                         </p>
-                        ${book.pendingReturn?.hasPending ? `
-                        <p style="margin: 8px 0 0 0; padding: 8px 12px; background: #fff3e0; border-radius: 6px; border-left: 4px solid #FF9800; font-size: 12px; color: #e65100;">
-                            <strong>⏳ Return Request Pending</strong><br>
-                            <span style="color: #666;">Requested: ${book.pendingReturn.requestedAt.toLocaleDateString()} at ${book.pendingReturn.requestedAt.toLocaleTimeString()}</span><br>
-                            <span style="color: #666;">Proposed Condition: ${conditionNames[book.pendingReturn.proposedCondition] || 'Unknown'}</span><br>
-                            <span style="color: #666;">Estimated Refund: ~${estimatedRefund.toFixed(4)} ETH</span>
-                        </p>
-                        ` : book.isOverdue ? `
+                        ${book.isOverdue ? `
                         <p style="margin: 8px 0 0 0; padding: 6px 10px; background: #ffebee; border-radius: 4px; font-size: 12px; color: #d32f2f; display: inline-block;">
-                            💸 Late Penalty: ${latePenalty.toFixed(4)} ETH | Estimated Refund: ~${estimatedRefund.toFixed(4)} ETH
+                            💸 Late Penalty: ${latePenalty.toFixed(4)} ETH | Refund: ~${estimatedRefund.toFixed(4)} ETH
                         </p>
-                        ` : `
-                        <p style="margin: 8px 0 0 0; padding: 6px 10px; background: #e8f5e9; border-radius: 4px; font-size: 12px; color: #2e7d32; display: inline-block;">
-                            💰 Estimated Refund: ~${estimatedRefund.toFixed(4)} ETH (if returned on time)
-                        </p>
-                        `}
+                        ` : ''}
                     </div>
                 </div>
                 <div class="book-actions" style="display: flex; flex-direction: column; gap: 10px; min-width: 140px;">
@@ -518,12 +453,8 @@ function renderBorrowedBooks(borrowedBooks) {
                         <span style="font-size: 13px; font-weight: 600; color: ${statusColor};">${statusText}</span>
                     </div>
                     ${!book.isReturned ? `
-                        <button 
-                            onclick="requestReturnAction(${book.id}, '${book.name.replace(/'/g, "\\'")}')" 
-                            style="width: 100%; padding: 10px 16px; background: ${book.pendingReturn?.hasPending ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}; color: white; border: none; border-radius: 6px; cursor: ${book.pendingReturn?.hasPending ? 'not-allowed' : 'pointer'}; font-size: 13px; font-weight: 600; opacity: ${book.pendingReturn?.hasPending ? '0.6' : '1'};"
-                            ${book.pendingReturn?.hasPending ? 'disabled title="Return request already pending admin approval"' : ''}
-                        >
-                            ${book.pendingReturn?.hasPending ? '⏳ Pending Approval' : '📤 Request Return'}
+                        <button onclick="returnBookAction(${book.id}, '${book.name.replace(/'/g, "\\'")}')" style="width: 100%; padding: 10px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            📤 Return Book
                         </button>
                         <button onclick="extendLoanAction(${book.id}, '${book.name.replace(/'/g, "\\'")}')" style="width: 100%; padding: 10px 16px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                             ⏰ Extend (+14 days)
@@ -542,105 +473,56 @@ function renderBorrowedBooks(borrowedBooks) {
 }
 
 /**
- * Book action functions
+ * Book action functions (same as before)
  */
-window.requestReturnAction = async function(bookId, bookName) {
+window.returnBookAction = async function(bookId, bookName) {
     try {
-        // Check if there's already a pending return request
-        const pendingStatus = await checkPendingReturnRequest(bookId, window.walletState.address);
-        
-        if (pendingStatus.hasPending) {
-            alert(
-                `⚠️ Return Request Already Pending\n\n` +
-                `You already have a pending return request for "${bookName}".\n\n` +
-                `Request ID: ${pendingStatus.requestId}\n` +
-                `Requested: ${pendingStatus.requestedAt.toLocaleDateString()} at ${pendingStatus.requestedAt.toLocaleTimeString()}\n\n` +
-                `Please wait for admin approval before submitting another request.`
-            );
-            return;
-        }
-        
         const condition = prompt(
-            `Request Return for "${bookName}" (ID: ${bookId})\n\n` +
-            `⚠️ IMPORTANT: Admin approval required before return is completed\n\n` +
-            `Select proposed book condition:\n` +
-            `5 = Like New (no penalty) ✨\n` +
-            `0 = Good Condition (no penalty)\n` +
-            `4 = Fair/Worn (possible penalty)\n` +
-            `2 = Damaged (0.005 ETH penalty)\n` +
-            `3 = Lost (full deposit lost)\n\n` +
-            `Note: Admin will verify the actual condition\n\n` +
-            `Enter condition (0, 2, 3, 4, or 5):`,
-            '5'
+            `Return "${bookName}" (ID: ${bookId})\n\n` +
+            `Select book condition:\n` +
+            `0 = Good (no penalty)\n` +
+            `1 = Fair (no penalty)\n` +
+            `2 = Poor (no penalty)\n` +
+            `3 = Damaged (0.005 ETH penalty)\n` +
+            `4 = Lost (0.005 ETH penalty)\n\n` +
+            `Enter condition (0-4):`,
+            '0'
         );
 
         if (condition === null) return;
 
         const conditionNum = parseInt(condition);
-        const validConditions = [0, 2, 3, 4, 5];
-        if (isNaN(conditionNum) || !validConditions.includes(conditionNum)) {
-            alert('Invalid condition! Please enter 0, 2, 3, 4, or 5.');
+        if (isNaN(conditionNum) || conditionNum < 0 || conditionNum > 4) {
+            alert('Invalid condition! Please enter 0-4.');
             return;
         }
 
-        const conditionNames = {
-            5: 'Like New',
-            0: 'Good Condition',
-            4: 'Fair/Worn',
-            2: 'Damaged',
-            3: 'Lost'
-        };
-        const hasPenalty = conditionNum === 2 || conditionNum === 3;
+        const conditionNames = ['Good', 'Fair', 'Poor', 'Damaged', 'Lost'];
+        const hasPenalty = conditionNum >= 3;
         
-        if (!confirm(
-            `Request return for "${bookName}" in "${conditionNames[conditionNum]}" condition?\n\n` +
-            `⚠️ IMPORTANT NOTES:\n` +
-            `• Your return request will be pending admin approval\n` +
-            `• Admin will verify the actual book condition\n` +
-            `• Final penalty will be based on admin's assessment\n` +
-            `• You will be notified when your return is approved\n` +
-            `${hasPenalty ? '\n⚠️ You proposed a condition with penalty!' : ''}`
-        )) return;
+        if (!confirm(`Return "${bookName}" in ${conditionNames[conditionNum]} condition?${hasPenalty ? '\n⚠️ This will incur a 0.005 ETH damage penalty!' : ''}`)) return;
 
         const libraryCoreContract = window.blockchainBooks.libraryCoreContract;
         const signer = window.walletState.signer;
         const contractWithSigner = libraryCoreContract.connect(signer);
-        const tx = await contractWithSigner.requestReturn(bookId, conditionNum);
+        const tx = await contractWithSigner.returnBook(bookId, conditionNum);
         
-        alert(`⏳ Return request transaction sent! Hash: ${tx.hash}\n\nPlease wait for confirmation...`);
+        alert(`⏳ Return transaction sent! Hash: ${tx.hash}`);
         await tx.wait();
-        alert(
-            `✅ Return request submitted successfully!\n\n` +
-            `📋 Status: PENDING APPROVAL\n\n` +
-            `Your return request for "${bookName}" has been submitted.\n` +
-            `An admin will review and approve your return.\n\n` +
-            `You will receive your deposit refund after admin approval.`
-        );
+        alert(`✅ Book "${bookName}" returned successfully!`);
         
         // Reload borrowed books
         await loadBorrowedBooksFromBlockchain(window.walletState.address);
         
     } catch (error) {
-        console.error('Request return failed:', error);
-        
-        let errorMessage = 'Failed to request return: ';
-        if (error.message.includes('Return request already pending')) {
-            errorMessage += 'You already have a pending return request for this book.';
-        } else if (error.message.includes('Not the borrower')) {
-            errorMessage += 'You are not the borrower of this book.';
-        } else if (error.message.includes('Book already returned')) {
-            errorMessage += 'This book has already been returned.';
-        } else {
-            errorMessage += error.message;
-        }
-        
-        alert(`❌ ${errorMessage}`);
+        console.error('Return book failed:', error);
+        alert(`❌ Failed to return book: ${error.message}`);
     }
 };
 
 window.extendLoanAction = async function(bookId, bookName) {
     try {
-        if (!confirm(`Extend loan for "${bookName}" by 14 days?\n\nExtension fee: 0.01 ETH (BASE_DEPOSIT)`)) return;
+        if (!confirm(`Extend loan for "${bookName}" by 14 days?\n\nExtension fee: 0.01 ETH`)) return;
 
         const libraryCoreContract = window.blockchainBooks.libraryCoreContract;
         const signer = window.walletState.signer;

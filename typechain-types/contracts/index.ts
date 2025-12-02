@@ -9,4 +9,8 @@ export type { BookNFT } from "./BookNFT";
 export type { EscrowVault } from "./EscrowVault";
 export type { LibraryCore } from "./LibraryCore";
 export type { LibraryCoreV2 } from "./LibraryCoreV2";
+export type { LibraryCoreV3 } from "./LibraryCoreV3";
+export type { RoleManager } from "./RoleManager";
+export type { UserCart } from "./UserCart";
 export type { UserProfile } from "./UserProfile";
+export type { UserProfileV2 } from "./UserProfileV2";

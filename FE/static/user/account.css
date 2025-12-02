@@ -275,4 +275,97 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+}/
+* ========================================
+   BORROWED BOOKS ACTION BUTTONS
+   ======================================== */
+
+.book .action button {
+    transition: all 0.3s ease;
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.book .action button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.book .action button:active {
+    transform: translateY(0);
+}
+
+/* Return button */
+.book .action button[onclick*="returnBookToBlockchain"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.book .action button[onclick*="returnBookToBlockchain"]:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+/* Extend button */
+.book .action button[onclick*="extendLoanForBook"] {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+}
+
+.book .action button[onclick*="extendLoanForBook"]:hover {
+    background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+}
+
+/* Report Lost button */
+.book .action button[onclick*="reportLostBook"] {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+}
+
+.book .action button[onclick*="reportLostBook"]:hover {
+    background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+}
+
+/* Overdue book styling */
+.book[style*="fff3f3"] {
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 2px 8px rgba(244, 67, 54, 0.2); }
+    50% { box-shadow: 0 4px 16px rgba(244, 67, 54, 0.4); }
+    100% { box-shadow: 0 2px 8px rgba(244, 67, 54, 0.2); }
+}
+
+/* Status indicators */
+.status-dot {
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* Responsive design for action buttons */
+@media (max-width: 768px) {
+    .book {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    .book .action {
+        margin-top: 16px;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        min-width: auto !important;
+    }
+    
+    .book .action button {
+        flex: 1;
+        margin: 0 4px;
+        padding: 8px 12px !important;
+        font-size: 11px !important;
+    }
 }

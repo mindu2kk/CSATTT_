@@ -121,7 +121,7 @@ async function adminUpdateBookCondition(bookId, bookName) {
             
             console.log(`🔄 Updating book ${bookId} condition to ${newCondition}...`);
             
-            const tx = await contractWithSigner.updateBookCondition(bookId, newCondition);
+            const tx = await contractWithSigner.updateCondition(bookId, newCondition);
             alert('⏳ Updating condition...');
             
             await tx.wait();

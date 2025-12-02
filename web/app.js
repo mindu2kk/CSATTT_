@@ -79,7 +79,11 @@ const ESCROW_VAULT_ABI = [
     "function owner() external view returns (address)",
     "function getBalance() external view returns (uint256)",
     "function withdrawPenalty(uint256 amount) external",
-    "function withdrawAllPenalty() external"
+    "function withdrawAllPenalty() external",
+    // ⭐ Events (needed for filters!)
+    "event Locked(address indexed user, uint256 indexed bookId, uint256 amount)",
+    "event Released(address indexed to, uint256 indexed bookId, uint256 amount)",
+    "event CoreSet(address indexed core)"
 ];
 
 // Helper function to get book info with error handling

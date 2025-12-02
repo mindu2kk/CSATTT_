@@ -12,6 +12,14 @@ async function reserveBook(bookId, bookName) {
             alert('Please connect your MetaMask wallet first!');
             return;
         }
+
+        if (typeof ensureProfileCompletion === 'function') {
+            const ready = await ensureProfileCompletion({
+                actionLabel: 'đặt chỗ sách',
+                redirectUrl: '/account?active_tab=profile'
+            });
+            if (!ready) return;
+        }
         
         // Confirm reservation
         if (!confirm(`Reserve "${bookName}"?\n\nYou will be notified when this book becomes available.`)) {

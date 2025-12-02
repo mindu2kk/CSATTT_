@@ -91,10 +91,12 @@ class ProfileManager {
             this.currentProfile = profile;
             this.displayProfile();
             this.updateHeaderStatus(true, profile.name || profile.fullName);
+            this.markProfileCompletion(true);
         } else {
             console.log('No profile found, showing setup');
             this.showProfileSetup();
             this.updateHeaderStatus(false);
+            this.markProfileCompletion(false);
         }
     }
 
@@ -205,6 +207,7 @@ class ProfileManager {
             }
 
             this.currentProfile = profileData;
+            this.markProfileCompletion(true);
             
             // Update header status
             this.updateHeaderStatus(true, profileData.fullName);
@@ -289,15 +292,59 @@ class ProfileManager {
     // Load library statistics from blockchain
     async loadLibraryStats() {
         try {
-            if (!window.libraryCore || !this.walletAddress) return;
+            if (!this.walletAddress) {
+                this.updateMockStats();
+                return;
+            }
+            
+            if (typeof initBlockchainContracts === 'function') {
+                await initBlockchainContracts();
+            }
+            
+            const libraryCore = window.blockchainBooks?.libraryCoreContract;
+            if (!libraryCore) {
+                this.updateMockStats();
+                return;
+            }
 
-            // Get reputation
-            const reputation = await window.libraryCore.getReputation(this.walletAddress);
-            document.getElementById('profileReputation').textContent = reputation.toString();
+            const userAddress = this.walletAddress;
+            const reputationPromise = libraryCore.userReputation
+                ? libraryCore.userReputation(userAddress)
+                : libraryCore.getReputation(userAddress);
 
-            // Get user's loan history (this would need to be implemented in the contract)
-            // For now, we'll use mock data
-            this.updateMockStats();
+            const [currentLoansRaw, loanHistoryRaw, reputation] = await Promise.all([
+                libraryCore.getUserCurrentLoans(userAddress).catch(() => []),
+                libraryCore.getUserLoanHistory(userAddress).catch(() => []),
+                reputationPromise
+            ]);
+            
+            const currentLoanIds = Array.isArray(currentLoansRaw) ? currentLoansRaw.map(id => Number(id)) : [];
+            const loanHistoryIds = Array.isArray(loanHistoryRaw) ? loanHistoryRaw.map(id => Number(id)) : [];
+            
+            const reputationEl = document.getElementById('profileReputation');
+            const totalBorrowsEl = document.getElementById('totalBorrows');
+            const currentBorrowsEl = document.getElementById('currentBorrows');
+            if (reputationEl) reputationEl.textContent = reputation?.toString() || '0';
+            if (totalBorrowsEl) totalBorrowsEl.textContent = loanHistoryIds.length;
+            if (currentBorrowsEl) currentBorrowsEl.textContent = currentLoanIds.length;
+            
+            let onTimeReturns = 0;
+            if (loanHistoryIds.length) {
+                const loanInfos = await Promise.all(
+                    loanHistoryIds.map(bookId => libraryCore.loanInfos(bookId).catch(() => null))
+                );
+                
+                loanInfos.forEach(info => {
+                    if (!info) return;
+                    const isReturned = info.isReturned !== undefined ? info.isReturned : info[4];
+                    const overdue = info.overdue !== undefined ? info.overdue : info[9];
+                    if (isReturned && !overdue) {
+                        onTimeReturns += 1;
+                    }
+                });
+            }
+            const onTimeEl = document.getElementById('onTimeReturns');
+            if (onTimeEl) onTimeEl.textContent = onTimeReturns;
 
         } catch (error) {
             console.error('Error loading library stats:', error);
@@ -307,16 +354,12 @@ class ProfileManager {
 
     // Update with mock statistics (replace with real data when available)
     updateMockStats() {
-        // These would come from blockchain events or backend API
-        const mockStats = {
-            totalBorrows: Math.floor(Math.random() * 20) + 1,
-            currentBorrows: Math.floor(Math.random() * 3),
-            onTimeReturns: Math.floor(Math.random() * 18) + 1
-        };
-
-        document.getElementById('totalBorrows').textContent = mockStats.totalBorrows;
-        document.getElementById('currentBorrows').textContent = mockStats.currentBorrows;
-        document.getElementById('onTimeReturns').textContent = mockStats.onTimeReturns;
+        const totalBorrowsEl = document.getElementById('totalBorrows');
+        const currentBorrowsEl = document.getElementById('currentBorrows');
+        const onTimeEl = document.getElementById('onTimeReturns');
+        if (totalBorrowsEl) totalBorrowsEl.textContent = '0';
+        if (currentBorrowsEl) currentBorrowsEl.textContent = '0';
+        if (onTimeEl) onTimeEl.textContent = '0';
     }
 
     // Load profile on page load
@@ -440,6 +483,21 @@ class ProfileManager {
                 }
             }
             profileStatus.style.display = 'block';
+        }
+    }
+
+    // Persist completion flag for quick guards
+    markProfileCompletion(isComplete) {
+        if (!this.walletAddress) return;
+        if (window.profileGuard && typeof window.profileGuard.markComplete === 'function') {
+            window.profileGuard.markComplete(this.walletAddress, isComplete);
+            return;
+        }
+        const key = `profileCompleted:${this.walletAddress.toLowerCase()}`;
+        if (isComplete) {
+            localStorage.setItem(key, 'true');
+        } else {
+            localStorage.removeItem(key);
         }
     }
 

@@ -78,9 +78,20 @@
         <i class='bx bx-chevrons-up'></i>
     </button>
 
+    <div id="notification" class="notification"></div>
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="spinner">⏳ Processing transaction...</div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile-guard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/blockchain-profile.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ipfs-uploader.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
         document.getElementById('scrollToTopBtn').addEventListener('click', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });

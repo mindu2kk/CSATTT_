@@ -49,6 +49,15 @@
                         </div>
                     </div>
                 </div>
+                <div class="reservation-panel" id="reservationPanel" style="display:none; background:#f8fafc; border:1px solid #dbeafe; border-radius:12px; padding:16px; margin:16px 0; box-shadow:0 4px 14px rgba(15,23,42,0.08);">
+                    <h4 style="margin-top:0;">📋 Reservation Queue</h4>
+                    <p class="reservation-help" style="font-size:13px; color:#475569;">
+                        Khi sách đang được mượn, bạn có thể đăng ký xếp hàng. Hệ thống sẽ ưu tiên người đặt trước theo thứ tự.
+                    </p>
+                    <ul id="reservationList" style="list-style:none; padding-left:0; margin:0 0 10px 0; font-size:13px; color:#0f172a;"></ul>
+                    <small id="reservationStatusText" class="reservation-status" style="display:block; font-size:12px; color:#475569;"></small>
+                    <button id="reserveActionButton" class="buy-now-btn" style="margin-top:12px; width:100%; display:none;">📌 Đặt chỗ</button>
+                </div>
                 <div class="product-info">
                     <div class="price-1">
                         <p>$30.00</p>
@@ -92,7 +101,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile-guard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/reserve-book.js') }}"></script>
     <script src="{{ url_for('static', filename='js/book-detail.js') }}"></script>
     
     <script>

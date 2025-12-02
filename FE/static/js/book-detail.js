@@ -2,6 +2,25 @@
 // BOOK DETAIL PAGE - BLOCKCHAIN INTEGRATION
 // ========================================
 
+// Use global DEFAULT_BOOK_IMAGE if it exists, otherwise define it
+if (typeof window.DEFAULT_BOOK_IMAGE === 'undefined') {
+    window.DEFAULT_BOOK_IMAGE = '/model_images/muado.jpg';
+}
+let currentBookDetail = null;
+
+function resolveIpfsUrl(imageHash) {
+    if (!imageHash) return window.DEFAULT_BOOK_IMAGE;
+    const trimmed = imageHash.trim();
+    if (!trimmed) return window.DEFAULT_BOOK_IMAGE;
+    if (trimmed.startsWith('ipfs://')) {
+        return `https://ipfs.io/ipfs/${trimmed.replace('ipfs://', '')}`;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+    }
+    return `https://ipfs.io/ipfs/${trimmed}`;
+}
+
 /**
  * Load book detail from blockchain by ID
  */
@@ -27,6 +46,8 @@ async function loadBookDetail() {
         const owner = await window.blockchainBooks.bookNFTContract.ownerOf(bookId);
         const status = Number(bookInfo.status);
         const condition = Number(bookInfo.condition);
+        const imageBeforeHash = bookInfo.imageBeforeHash || bookInfo[5] || '';
+        const imageAfterHash = bookInfo.imageAfterHash || bookInfo[6] || '';
         
         // Calculate price (example: 0.01 ETH per book)
         const priceEth = (bookId + 1) * 0.01;
@@ -43,7 +64,9 @@ async function loadBookDetail() {
             conditionName: getConditionName(condition),
             priceEth: priceEth,
             owner: owner,
-            imageHash: bookInfo.imageBeforeHash || ''
+            imageHash: imageBeforeHash,
+            imageBeforeHash,
+            imageAfterHash
         });
         
         // Load related books
@@ -67,23 +90,52 @@ function extractAuthor(description) {
  * Render book detail
  */
 function renderBookDetail(book) {
+    currentBookDetail = book;
     // Determine book status logic
     const status = Number(book.status);
     const condition = Number(book.condition);
     
-    const isAvailable = status === 0;
+    const isAvailable = status === 0 || status === 4 || status === 5;
     const isBorrowed = status === 1;
     const isDamaged = status === 2;  // ✅ FIXED: Contract uses "Damaged", not "Reserved"
     const isLost = status === 3;
+    const isOld = status === 4;
+    const isNewArrival = status === 5;
+    const coverUrl = resolveIpfsUrl(book.imageAfterHash || book.imageBeforeHash || book.imageHash);
     
     // Update book image (placeholder for now)
     const bookImg = document.querySelector('.layout .content > img');
     if (bookImg) {
         bookImg.alt = book.name;
+        bookImg.src = coverUrl;
         // Add status overlay
         if (!isAvailable) {
             bookImg.style.filter = 'grayscale(50%)';
             bookImg.style.opacity = '0.7';
+        } else {
+            bookImg.style.filter = '';
+            bookImg.style.opacity = '1';
+        }
+        
+        if (book.imageBeforeHash || book.imageAfterHash) {
+            let imageMeta = document.querySelector('.image-hashes');
+            if (!imageMeta) {
+                imageMeta = document.createElement('div');
+                imageMeta.className = 'image-hashes';
+                imageMeta.style.marginTop = '8px';
+                imageMeta.style.fontSize = '12px';
+                imageMeta.style.color = '#0d47a1';
+                bookImg.parentElement?.appendChild(imageMeta);
+            }
+            const beforeLink = book.imageBeforeHash ? `<a href="${resolveIpfsUrl(book.imageBeforeHash)}" target="_blank">📷 Before</a>` : '';
+            const afterLink = book.imageAfterHash ? `<a href="${resolveIpfsUrl(book.imageAfterHash)}" target="_blank">✅ After</a>` : '';
+            imageMeta.innerHTML = `
+                <strong>Cover proof:</strong>
+                <span style="display:inline-flex; gap:10px; margin-left:6px;">
+                    ${beforeLink || '—'}
+                    ${afterLink}
+                </span>
+            `;
         }
     }
     
@@ -110,14 +162,34 @@ function renderBookDetail(book) {
     // Update status with comprehensive info
     const statusEl = document.querySelector('.status p');
     if (statusEl) {
-        const statusColors = {0: '#4CAF50', 1: '#FF9800', 2: '#FF5722', 3: '#F44336'};  // ✅ Fixed: 2=Damaged
-        const statusIcons = {0: '✅', 1: '📗', 2: '⚠️', 3: '❌'};  // ✅ Fixed: 2=Damaged icon
+        const statusColors = {
+            0: '#4CAF50',
+            1: '#FF9800',
+            2: '#FF5722',
+            3: '#F44336',
+            4: '#8e44ad',
+            5: '#00b894'
+        };
+        const statusIcons = {
+            0: '✅',
+            1: '📗',
+            2: '⚠️',
+            3: '❌',
+            4: '📘',
+            5: '🆕'
+        };
         const statusColor = statusColors[status] || '#666';
         const statusIcon = statusIcons[status] || '⚠️';
         
         let statusMessage = '';
         if (isAvailable) {
-            statusMessage = '<span style="color: #4CAF50; font-weight: 600;">✅ Available for borrowing</span>';
+            if (isNewArrival) {
+                statusMessage = '<span style="color: #00b894; font-weight: 600;">🆕 New arrival – be the first to borrow!</span>';
+            } else if (isOld) {
+                statusMessage = '<span style="color: #8e44ad; font-weight: 600;">📘 Archived copy – vẫn có thể mượn bình thường.</span>';
+            } else {
+                statusMessage = '<span style="color: #4CAF50; font-weight: 600;">✅ Available for borrowing</span>';
+            }
         } else if (isBorrowed) {
             statusMessage = '<span style="color: #FF9800; font-weight: 600;">📗 Currently borrowed by another user</span>';
         } else if (isDamaged) {
@@ -223,6 +295,8 @@ function renderBookDetail(book) {
         condition: `${condition} (${book.conditionName})`,
         canBorrow: isAvailable
     });
+
+    loadReservationInfo(book.id, isBorrowed);
 }
 
 /**
@@ -254,6 +328,16 @@ async function borrowBook(bookId, priceEth) {
         if (!window.blockchainBooks.libraryCoreContract) {
             alert('Library contract not loaded. Please refresh.');
             return;
+        }
+
+        if (typeof ensureProfileCompletion === 'function') {
+            const ready = await ensureProfileCompletion({
+                actionLabel: 'mượn sách',
+                redirectUrl: '/account?active_tab=profile'
+            });
+            if (!ready) {
+                return;
+            }
         }
         
         const depositAmount = ethers.utils.parseEther(priceEth.toFixed(18));
@@ -382,6 +466,124 @@ function displayBookError(message) {
             </div>
         `;
     }
+}
+
+async function loadReservationInfo(bookId, isBorrowed) {
+    const panel = document.getElementById('reservationPanel');
+    if (!panel) return;
+
+    try {
+        await initBlockchainContracts();
+        const libraryCore = window.blockchainBooks?.libraryCoreContract;
+        if (!libraryCore || typeof libraryCore.getBookReservations !== 'function') {
+            panel.style.display = 'none';
+            return;
+        }
+
+        let reservations = [];
+        try {
+            reservations = await libraryCore.getBookReservations(bookId);
+        } catch (error) {
+            console.warn('getBookReservations unavailable:', error);
+        }
+
+        let hasReserved = false;
+        if (window.walletState?.address && typeof libraryCore.hasReserved === 'function') {
+            try {
+                hasReserved = await libraryCore.hasReserved(bookId, window.walletState.address);
+            } catch (error) {
+                console.warn('hasReserved check failed:', error);
+            }
+        }
+
+        renderReservationPanel(bookId, {
+            reservations: Array.isArray(reservations) ? reservations : [],
+            hasReserved,
+            isBorrowed
+        });
+    } catch (error) {
+        console.error('Failed to load reservation info:', error);
+    }
+}
+
+function renderReservationPanel(bookId, { reservations = [], hasReserved = false, isBorrowed = false }) {
+    const panel = document.getElementById('reservationPanel');
+    const listEl = document.getElementById('reservationList');
+    const statusEl = document.getElementById('reservationStatusText');
+    const actionBtn = document.getElementById('reserveActionButton');
+    if (!panel || !listEl || !statusEl || !actionBtn) return;
+
+    const currentUser = window.walletState?.address?.toLowerCase() || null;
+    const maxPreview = 6;
+    const visible = reservations.slice(0, maxPreview);
+
+    panel.style.display = 'block';
+
+    if (visible.length === 0) {
+        listEl.innerHTML = '<li style="color:#94a3b8;">Chưa có ai đặt chỗ.</li>';
+    } else {
+        listEl.innerHTML = visible.map((addr, idx) => {
+            const shortAddr = formatAddressShort(addr);
+            const youBadge = currentUser && addr?.toLowerCase() === currentUser ? ' <span style="color:#0ea5e9;">(Bạn)</span>' : '';
+            return `<li style="padding:4px 0; border-bottom:1px dashed #e2e8f0; font-family:monospace; font-size:12px;">
+                ${idx + 1}. ${shortAddr}${youBadge}
+            </li>`;
+        }).join('');
+        if (reservations.length > maxPreview) {
+            listEl.innerHTML += `<li style="color:#94a3b8; font-size:12px;">... và ${reservations.length - maxPreview} người khác</li>`;
+        }
+    }
+
+    if (!isBorrowed) {
+        statusEl.textContent = '📗 Sách đang sẵn có, bạn có thể mượn ngay không cần xếp hàng.';
+        actionBtn.style.display = 'none';
+        return;
+    }
+
+    statusEl.textContent = reservations.length
+        ? `📚 Hiện có ${reservations.length} người trong hàng chờ.`
+        : '📚 Bạn sẽ là người đầu tiên trong hàng chờ.';
+
+    actionBtn.style.display = 'block';
+    if (hasReserved) {
+        actionBtn.textContent = '✅ Bạn đã đăng ký chờ';
+        actionBtn.disabled = true;
+        actionBtn.style.opacity = '0.7';
+        actionBtn.onclick = null;
+    } else {
+        actionBtn.textContent = '📌 Đặt chỗ cuốn sách này';
+        actionBtn.disabled = false;
+        actionBtn.style.opacity = '1';
+        actionBtn.onclick = () => attemptReserve(bookId);
+    }
+}
+
+async function attemptReserve(bookId) {
+    try {
+        if (!window.walletState || !window.walletState.isConnected) {
+            await connectMetaMask();
+            if (!window.walletState?.isConnected) return;
+        }
+
+        if (typeof ensureProfileCompletion === 'function') {
+            const ok = await ensureProfileCompletion({
+                actionLabel: 'đặt chỗ sách',
+                redirectUrl: '/account?active_tab=profile'
+            });
+            if (!ok) return;
+        }
+
+        const bookName = currentBookDetail?.name || `Book #${bookId}`;
+        await reserveBook(bookId, bookName);
+        await loadReservationInfo(bookId, true);
+    } catch (error) {
+        console.error('Reserve action failed:', error);
+    }
+}
+
+function formatAddressShort(address) {
+    if (!address || address.length < 10) return address || '-';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 // Auto-load book detail when page loads

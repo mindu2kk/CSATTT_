@@ -109,7 +109,12 @@ def get_contracts_json():
     try:
         contracts_path = Path(__file__).parent.parent / "web" / "contracts.json"
         if contracts_path.exists():
-            return send_file(contracts_path, mimetype='application/json')
+            response = send_file(contracts_path, mimetype='application/json')
+            # Prevent caching to always get latest contract addresses
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
         else:
             return jsonify({
                 'error': 'Contracts not deployed',

@@ -10,7 +10,9 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Authentication Module -->
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile-guard.js') }}"></script>
     <!-- Profile Management Module -->
+    <script src="{{ url_for('static', filename='js/blockchain-books.js') }}"></script>
     <script src="{{ url_for('static', filename='js/blockchain-profile.js') }}"></script>
     <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -202,6 +204,16 @@
                         </select>
                         <small style="color: #6c757d;">⚠️ Returning damaged/lost books will affect your reputation and deposit</small>
                     </div>
+                    <div class="form-group">
+                        <label for="returnImageHash">Evidence Image (IPFS CID / URL):</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <input type="text" id="returnImageHash" placeholder="ipfs://... hoặc https://gateway/ipfs/..." style="flex:1; min-width:220px;">
+                            <button type="button" class="action-btn secondary" data-ipfs-upload-target="returnImageHash" data-ipfs-status="#returnIpfsStatus">⬆️ Upload IPFS</button>
+                            <button type="button" class="action-btn secondary" style="background:#fef3c7; color:#9a3412;" data-ipfs-config-button="true">⚙️ Cấu hình IPFS</button>
+                        </div>
+                        <small style="color:#6c757d; display:block;">Nếu cung cấp CID/URL, hệ thống sẽ lưu ảnh bằng <code>returnBookWithImage</code>.</small>
+                        <small id="returnIpfsStatus" class="ipfs-status"></small>
+                    </div>
                     
                     <div class="return-summary" id="returnSummary" style="display: none;">
                         <h4>📋 Return Summary:</h4>
@@ -248,6 +260,32 @@
                     <div id="escrowVaultInfo"></div>
                 </div>
 
+                <div class="management-section">
+                    <h4>💵 Escrow Deposits</h4>
+                    <p style="color:#6c757d; margin-bottom:12px;">Tra cứu tiền cọc đang bị giữ trong EscrowVault và theo dõi sự kiện Locked/Released.</p>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:10px;">
+                        <div>
+                            <label for="escrowLookupAddress">Wallet Address</label>
+                            <input type="text" id="escrowLookupAddress" placeholder="0xabc..." style="width:100%;">
+                        </div>
+                        <div>
+                            <label for="escrowLookupBookId">Book ID</label>
+                            <input type="number" id="escrowLookupBookId" min="0" placeholder="e.g. 1" style="width:100%;">
+                        </div>
+                        <div style="display:flex; align-items:flex-end;">
+                            <button id="checkDepositButton" class="action-btn" style="width:100%; background:#17a2b8;">🔍 Check Deposit</button>
+                        </div>
+                    </div>
+                    <div id="escrowLookupResult" style="display:none; background:#f8f9fa; border-radius:8px; padding:12px; border:1px solid #dee2e6;"></div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:15px;">
+                        <h5 style="margin:0;">Recent Escrow Activity</h5>
+                        <button id="refreshEscrowActivityButton" class="action-btn" style="background:#f1f3f5; color:#333;">🔄 Refresh</button>
+                    </div>
+                    <div id="escrowActivityLog" style="margin-top:10px; border:1px solid #dee2e6; border-radius:8px; padding:12px; max-height:280px; overflow:auto;">
+                        <p style="color:#6c757d; margin:0;">Connect wallet to load escrow events.</p>
+                    </div>
+                </div>
+
                 <!-- Library Statistics -->
                 <div class="management-section">
                     <h4>📊 Library Statistics</h4>
@@ -289,6 +327,16 @@
                         <textarea id="bookDescription" placeholder="Enter book description"></textarea>
                     </div>
                     <div class="form-group">
+                        <label for="bookImageHash">Cover Image (IPFS CID / URL):</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <input type="text" id="bookImageHash" placeholder="ipfs://... hoặc https://gateway/ipfs/..." style="flex:1; min-width:220px;">
+                            <button type="button" class="action-btn secondary" data-ipfs-upload-target="bookImageHash" data-ipfs-status="#mintIpfsStatus">⬆️ Upload IPFS</button>
+                            <button type="button" class="action-btn secondary" style="background:#fef3c7; color:#9a3412;" data-ipfs-config-button="true">⚙️ Cấu hình IPFS</button>
+                        </div>
+                        <small style="color:#6c757d; display:block;">Có thể bỏ trống nếu chưa có ảnh. Nút Upload sẽ tự điền CID sau khi thành công.</small>
+                        <small id="mintIpfsStatus" class="ipfs-status"></small>
+                    </div>
+                    <div class="form-group">
                         <label for="bookStatus">Initial Status:</label>
                         <select id="bookStatus">
                             <option value="0">📗 Available</option>
@@ -306,6 +354,17 @@
                         </select>
                     </div>
                     <button id="mintButton" class="action-btn">➕ Mint Book</button>
+                </div>
+
+                <div class="form-section">
+                    <h3>📦 Batch Mint Books</h3>
+                    <p style="color:#6c757d;">Mint nhiều sách cùng lúc bằng hàm <code>batchMintBooks</code>. Tất cả sách được tạo ở tình trạng <strong>New</strong>.</p>
+                    <div id="batchMintRows" style="display:flex; flex-direction:column; gap:12px;"></div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
+                        <button type="button" id="addBatchRowButton" class="action-btn" style="background:#f1f3f5; color:#333; min-width:160px;">➕ Add Row</button>
+                        <button type="button" id="batchMintButton" class="action-btn" style="flex:1; min-width:200px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🚀 Mint Batch</button>
+                    </div>
+                    <small style="display:block; margin-top:8px; color:#6c757d;">Tip: điền tên, mô tả và trạng thái cho từng hàng trước khi gửi giao dịch.</small>
                 </div>
 
                 <div class="form-section">
@@ -358,6 +417,17 @@
                     <button onclick="updateBookCondition()" class="action-btn">🔧 Update Condition</button>
                 </div>
                 <div id="adminResult" class="result-section"></div>
+
+                <div class="management-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h4>⭐ Reputation Updates</h4>
+                        <button id="refreshReputationFeedButton" class="action-btn" style="background:#f1f3f5; color:#333;">🔄 Refresh</button>
+                    </div>
+                    <p style="color:#6c757d; margin-bottom:10px;">Theo dõi sự kiện <code>ReputationUpdated</code> để biết người dùng bị cộng/trừ uy tín.</p>
+                    <div id="reputationFeed" style="border:1px solid #dee2e6; border-radius:8px; padding:12px; max-height:260px; overflow:auto;">
+                        <p style="color:#6c757d; margin:0;">No data yet.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Profile Tab -->
@@ -543,6 +613,7 @@
         <div class="spinner">⏳ Processing transaction...</div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/ipfs-uploader.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

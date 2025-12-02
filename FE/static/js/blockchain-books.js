@@ -6,9 +6,30 @@
 window.blockchainBooks = {
     bookNFTContract: null,
     libraryCoreContract: null,
+    escrowVaultContract: null,
+    userProfileContract: null,
+    roleManagerContract: null,
     contracts: null,
     books: []
 };
+
+// Use global DEFAULT_BOOK_IMAGE if it exists, otherwise define it
+if (typeof window.DEFAULT_BOOK_IMAGE === 'undefined') {
+    window.DEFAULT_BOOK_IMAGE = '/model_images/muado.jpg';
+}
+
+function resolveIpfsUrl(imageHash) {
+    if (!imageHash) return window.DEFAULT_BOOK_IMAGE;
+    const trimmed = imageHash.trim();
+    if (!trimmed) return window.DEFAULT_BOOK_IMAGE;
+    if (trimmed.startsWith('ipfs://')) {
+        return `https://ipfs.io/ipfs/${trimmed.replace('ipfs://', '')}`;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+    }
+    return `https://ipfs.io/ipfs/${trimmed}`;
+}
 
 /**
  * Initialize blockchain contracts
@@ -65,17 +86,24 @@ async function initBlockchainContracts() {
             "function totalPenaltyCollected() view returns (uint256)",
             // View functions
             // loanInfos mapping getter (flattened outputs)
-            "function loanInfos(uint256) view returns (address borrower, uint256 borrowedAt, uint256 dueDate, uint256 deposit, bool isReturned, uint8 statusAtLoan, uint8 statusAtReturn, uint256 latePenalty, uint256 damagePenalty, bool overdue, bool damaged, string imageBeforeHash, string imageAfterHash)",
+            "function loanInfos(uint256) view returns (address borrower, uint256 borrowedAt, uint256 dueDate, uint256 deposit, bool isReturned, uint8 statusAtLoan, uint8 statusAtReturn, uint256 returnedAt, uint256 latePenalty, uint256 damagePenalty)",
             "function userReputation(address) view returns (int256)",
-            "function getLoanInfo(uint256 tokenId) view returns (tuple(address borrower, uint256 borrowedAt, uint256 dueDate, uint256 deposit, bool isReturned, uint8 statusAtLoan, uint8 statusAtReturn, uint256 latePenalty, uint256 damagePenalty, bool overdue, bool damaged, string imageBeforeHash, string imageAfterHash))",
+            "function getLoanInfo(uint256 tokenId) view returns (tuple(address borrower, uint256 borrowedAt, uint256 dueDate, uint256 deposit, bool isReturned, uint8 statusAtLoan, uint8 statusAtReturn, uint256 returnedAt, uint256 latePenalty, uint256 damagePenalty))",
             "function getReputation(address user) view returns (int256)",
             "function isBookBorrowed(uint256 tokenId) view returns (bool)",
             "function getBookReservations(uint256 tokenId) view returns (address[])",
             "function hasReserved(uint256 tokenId, address user) view returns (bool)",
+            "function getUserCurrentLoans(address user) view returns (uint256[])",
+            "function getUserLoanHistory(address user) view returns (uint256[])",
             "function calculatePenalty(uint256 tokenId) view returns (uint256 penalty, bool isOverdue)",
+            "function returnRequests(uint256) view returns (address borrower, uint256 bookId, uint256 requestedAt, uint8 proposedCondition, bool isPending, bool isApproved, address approvedBy, uint256 approvedAt)",
+            "function returnRequestCounter() view returns (uint256)",
+            "function getPendingReturnRequests() view returns (uint256[])",
             // Main functions
             "function borrowBook(uint256 tokenId) payable",
             "function returnBook(uint256 tokenId, uint8 afterStatus)",
+            "function requestReturn(uint256 bookId, uint8 proposedCondition)",
+            "function approveReturn(uint256 requestId, uint8 finalCondition)",
             "function returnBookWithImage(uint256 tokenId, uint8 afterStatus, string imageAfterHash)",
             "function extendLoan(uint256 tokenId) payable",
             "function reserveBook(uint256 tokenId)",
@@ -84,10 +112,68 @@ async function initBlockchainContracts() {
             "function pause()",
             "function unpause()",
             // ✅ CRITICAL: EVENT DEFINITIONS (needed for filters!)
-            "event BookBorrowed(uint256 indexed bookId, address indexed borrower, uint256 deposit, uint256 dueDate, uint256 timestamp)",
-            "event BookReturned(uint256 indexed bookId, address indexed borrower, uint8 returnStatus, uint256 penaltyPaid, uint256 timestamp)",
-            "event BookReserved(uint256 indexed bookId, address indexed user, uint256 timestamp)",
-            "event ReputationUpdated(address indexed user, int256 oldReputation, int256 newReputation)"
+            "event BookBorrowed(address indexed borrower, uint256 indexed tokenId, uint256 deposit, uint256 dueDate, uint256 timestamp)",
+            "event BookReturned(address indexed borrower, uint256 indexed tokenId, uint256 penalty, uint256 timestamp)",
+            "event BookReserved(uint256 indexed tokenId, address indexed reserver)",
+            "event LoanExtended(uint256 indexed tokenId, address indexed borrower, uint256 newDueDate)",
+            "event PenaltyWithdrawn(address indexed owner, uint256 amount)",
+            "event BookInfoUpdated(uint256 indexed tokenId, string name, string description)",
+            "event BookAvailableForReservation(uint256 indexed tokenId, address indexed reserver)",
+            "event ReturnRequested(uint256 indexed requestId, address indexed borrower, uint256 indexed bookId, uint256 timestamp)",
+            "event ReturnApproved(uint256 indexed requestId, address indexed approver, uint8 finalCondition, uint256 penalty, uint256 timestamp)",
+            "event DeprecatedFunctionUsed(address indexed caller, string functionName, uint256 timestamp)"
+        ];
+        
+        // ⭐ EscrowVault ABI
+        const escrowVaultAbi = [
+            // View functions
+            "function owner() view returns (address)",
+            "function libraryCore() view returns (address)",
+            "function depositOf(bytes32) view returns (uint256)",
+            "function getDeposit(address user, uint256 bookId) view returns (uint256)",
+            "function getBalance() view returns (uint256)",
+            // Main functions
+            "function lock(address user, uint256 bookId, uint256 amt) payable",
+            "function release(address payable to, uint256 bookId, uint256 amt)",
+            "function setCore(address _core)",
+            "function withdrawPenalty(uint256 amount)",
+            "function withdrawAllPenalty()",
+            // Events
+            "event Locked(address indexed user, uint256 indexed bookId, uint256 amount)",
+            "event Released(address indexed to, uint256 indexed bookId, uint256 amount)",
+            "event CoreSet(address indexed core)"
+        ];
+
+        // ⭐ UserProfileV2 ABI
+        const userProfileAbi = [
+            "function createProfile(string name, string emailHash, string studentId) external",
+            "function updateProfile(string name, string emailHash, string studentId) external",
+            "function hasActiveProfile(address user) view returns (bool)",
+            "function getProfile(address user) view returns (tuple(string name, string email, string studentId, uint256 createdAt, uint256 updatedAt, bool isActive, uint256 reputation))",
+            "function getUserByStudentId(string studentId) view returns (address)",
+            "function getRegisteredUsers(uint256 offset, uint256 limit) view returns (address[])",
+            "function getUserStats() view returns (uint256 total, uint256 active)",
+            "event ProfileCreated(address indexed user, string name, string studentId, uint256 timestamp)",
+            "event ProfileUpdated(address indexed user, string name, string studentId, uint256 timestamp)",
+            "event ReputationUpdated(address indexed user, uint256 oldReputation, uint256 newReputation, address indexed updater)"
+        ];
+
+        // ⭐ RoleManager ABI
+        const roleManagerAbi = [
+            "function grantRole(address account, uint8 role) external",
+            "function revokeRole(address account) external",
+            "function isAdmin(address account) view returns (bool)",
+            "function isLibrarian(address account) view returns (bool)",
+            "function isUser(address account) view returns (bool)",
+            "function hasRole(address account) view returns (bool)",
+            "function getRole(address account) view returns (uint8)",
+            "function getAllAdmins() view returns (address[])",
+            "function getAllLibrarians() view returns (address[])",
+            "function getUsers(uint256 offset, uint256 limit) view returns (address[])",
+            "function getRoleStats() view returns (uint256 totalAdmins, uint256 totalLibrarians, uint256 totalUsers)",
+            "event RoleGranted(address indexed account, uint8 role, uint256 timestamp)",
+            "event RoleRevoked(address indexed account, uint8 oldRole, uint256 timestamp)",
+            "event RoleChanged(address indexed account, uint8 oldRole, uint8 newRole, uint256 timestamp)"
         ];
         
         // Create contract instances
@@ -102,6 +188,59 @@ async function initBlockchainContracts() {
             libraryCoreAbi,
             window.walletState.signer
         );
+        
+        // ⭐ Load EscrowVault if deployed
+        if (window.blockchainBooks.contracts.escrowVault) {
+            try {
+                window.blockchainBooks.escrowVaultContract = new ethers.Contract(
+                    window.blockchainBooks.contracts.escrowVault,
+                    escrowVaultAbi,
+                    window.walletState.provider
+                );
+                console.log('✅ EscrowVault loaded:', window.blockchainBooks.contracts.escrowVault);
+                
+                // Make it globally accessible
+                window.escrowVaultContract = window.blockchainBooks.escrowVaultContract;
+            } catch (escrowError) {
+                console.warn('⚠️ Failed to load EscrowVault:', escrowError);
+            }
+        } else {
+            console.warn('⚠️ EscrowVault not deployed');
+        }
+
+        // ⭐ Load UserProfile if deployed
+        if (window.blockchainBooks.contracts.userProfile) {
+            try {
+                window.blockchainBooks.userProfileContract = new ethers.Contract(
+                    window.blockchainBooks.contracts.userProfile,
+                    userProfileAbi,
+                    window.walletState.signer
+                );
+                console.log('✅ UserProfile loaded:', window.blockchainBooks.contracts.userProfile);
+                window.userProfileContract = window.blockchainBooks.userProfileContract;
+            } catch (profileError) {
+                console.warn('⚠️ Failed to load UserProfile:', profileError);
+            }
+        } else {
+            console.warn('⚠️ UserProfile not deployed');
+        }
+
+        // ⭐ Load RoleManager if deployed
+        if (window.blockchainBooks.contracts.roleManager) {
+            try {
+                window.blockchainBooks.roleManagerContract = new ethers.Contract(
+                    window.blockchainBooks.contracts.roleManager,
+                    roleManagerAbi,
+                    window.walletState.signer
+                );
+                console.log('✅ RoleManager loaded:', window.blockchainBooks.contracts.roleManager);
+                window.roleManagerContract = window.blockchainBooks.roleManagerContract;
+            } catch (roleError) {
+                console.warn('⚠️ Failed to load RoleManager:', roleError);
+            }
+        } else {
+            console.warn('⚠️ RoleManager not deployed');
+        }
         
         console.log('✅ Contracts initialized');
         return true;
@@ -130,14 +269,14 @@ async function loadBooksFromBlockchain() {
         const totalBooks = Number(nextBookId);
         console.log(`📚 Loading ${totalBooks} books from blockchain...`);
         
-        let depositEth = 0.1;
+        let depositEth = 0.01; // Standard BASE_DEPOSIT
         try {
             if (window.blockchainBooks.libraryCoreContract) {
                 const baseDeposit = await window.blockchainBooks.libraryCoreContract.BASE_DEPOSIT();
                 depositEth = parseFloat(ethers.utils.formatEther(baseDeposit));
             }
         } catch (depositError) {
-            console.warn('⚠️ Could not load BASE_DEPOSIT, using 0.1 ETH fallback', depositError);
+            console.warn('⚠️ Could not load BASE_DEPOSIT, using 0.01 ETH fallback', depositError);
         }
         window.blockchainBooks.baseDepositEth = depositEth;
 
@@ -163,11 +302,9 @@ async function loadBooksFromBlockchain() {
                 ]);
                 
                 const statusNum = Number(status);
-                
-                if (statusNum < 0 || statusNum > 3) {
-                    console.error(`❌ Book ${i} has invalid status ${statusNum}, skipping`);
-                    continue;
-                }
+                const imageBeforeHash = bookInfo.imageBeforeHash || bookInfo[5] || '';
+                const imageAfterHash = bookInfo.imageAfterHash || bookInfo[6] || '';
+                const coverUrl = resolveIpfsUrl(imageAfterHash || imageBeforeHash);
                 
                 books.push({
                     id: i,
@@ -175,10 +312,12 @@ async function loadBooksFromBlockchain() {
                     description: bookInfo[1] || 'No description',
                     status: statusNum,
                     condition: Number(bookInfo[3]),
-                    priceEth: depositEth,
+                    priceEth: depositEth.toFixed(2),
                     priceUsd: (depositEth * 2000).toFixed(2),
                     owner: owner,
-                    imageUrl: '/model_images/muado.jpg'
+                    imageUrl: coverUrl,
+                    imageBeforeHash,
+                    imageAfterHash
                 });
                 
                 console.log(`✅ Book ${i}: "${bookInfo[0]}" - Status: ${statusNum} (${getStatusName(statusNum)})`);
@@ -205,8 +344,8 @@ async function loadBooksFromBlockchain() {
  * Get demo books (fallback when blockchain not available)
  */
 function getDemoBooks() {
-    const depositDisplay = (window.blockchainBooks && window.blockchainBooks.baseDepositEth) || 0.1;
-    const depositText = depositDisplay.toFixed(4);
+    const depositDisplay = (window.blockchainBooks && window.blockchainBooks.baseDepositEth) || 0.01;
+    const depositText = depositDisplay.toFixed(2);
     return [
         {
             id: 0,
@@ -255,21 +394,27 @@ function renderBooksToPage(books) {
     container.innerHTML = '';
     
     // Create book cards with FULL INFO
-    books.forEach(book => {
+        books.forEach(book => {
         const bookCard = document.createElement('div');
         bookCard.className = 'sach1';
         
         // Status and Condition
         const status = Number(book.status);
         const condition = Number(book.condition);
-        const isAvailable = status === 0;
+            // ✅ Available = 0 (Available), 5 (New), 6 (Old) - NOT 4!
+            const isAvailable = status === 0 || status === 5 || status === 6;
+            const coverUrl = resolveIpfsUrl(book.imageAfterHash || book.imageBeforeHash || book.imageUrl);
+            const beforeLink = book.imageBeforeHash ? `<a href="${resolveIpfsUrl(book.imageBeforeHash)}" target="_blank">📷 Before</a>` : '';
+            const afterLink = book.imageAfterHash ? `<a href="${resolveIpfsUrl(book.imageAfterHash)}" target="_blank">✅ After</a>` : '';
         
         // Status colors and text
         const statusColors = {
-            0: '#4CAF50', // Available - Green
-            1: '#FF9800', // Borrowed - Orange
-            2: '#FF5722', // Damaged - Deep Orange (✅ Matches contract)
-            3: '#F44336'  // Lost - Red
+                0: '#4CAF50', // Available
+                1: '#FF9800', // Borrowed
+                2: '#FF5722', // Damaged
+                3: '#F44336', // Lost
+                4: '#8e44ad', // Old
+                5: '#00b894'  // New
         };
         const statusColor = statusColors[status] || '#666';
         const statusText = getStatusName(status);
@@ -284,9 +429,9 @@ function renderBooksToPage(books) {
         const conditionColor = conditionColors[condition] || '#666';
         const conditionText = getConditionName(condition);
         
-        bookCard.innerHTML = `
+            bookCard.innerHTML = `
             <a href="/book?id=${book.id}">
-                <div class="biasach" style="background-image: url('${book.imageUrl}'); background-size: cover; background-position: center;"></div>
+                <div class="biasach" style="background-image: url('${coverUrl}'); background-size: cover; background-position: center;"></div>
             </a>
             <div class="tensach">
                 <p style="font-weight: 600; margin-bottom: 4px;">${book.name}</p>
@@ -306,6 +451,12 @@ function renderBooksToPage(books) {
                             ${conditionText}
                         </span>
                     </small>
+                    ${(beforeLink || afterLink) ? `
+                        <small style="display:flex; gap:8px; font-size:11px; color:#0d47a1;">
+                            ${beforeLink}
+                            ${afterLink}
+                        </small>` : ''
+                    }
                 </div>
             </div>
             <div class="price">
@@ -335,7 +486,9 @@ function getStatusName(status) {
         0: 'Available',
         1: 'Borrowed',
         2: 'Damaged',
-        3: 'Lost'
+        3: 'Lost',
+        4: 'Old',
+        5: 'New Arrival'
     };
     
     if (names[statusNum] === undefined) {
@@ -375,71 +528,54 @@ function getConditionName(condition) {
 }
 
 /**
- * Add book to cart (will be saved to localStorage)
+ * Add book to cart (using Helper)
  */
 async function addToCart(bookId, bookName, priceEth) {
-    // Simple add to cart - NO status check here
-    // Status will be checked during checkout
-    
-    let cart = [];
-    try {
-        cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    } catch (e) {
-        console.warn('localStorage not available:', e);
-        cart = [];
+    if (typeof addToCartBlockchain === 'function') {
+        return await addToCartBlockchain(bookId, bookName, priceEth);
     }
-    
-    // Check if book already in cart
-    const existingIndex = cart.findIndex(item => item.id === bookId);
-    
-    if (existingIndex >= 0) {
-        cart[existingIndex].quantity += 1;
-        alert(`Added another "${bookName}" to cart. Quantity: ${cart[existingIndex].quantity}`);
-    } else {
-        cart.push({
-            id: bookId,
-            name: bookName,
-            priceEth: priceEth,
-            priceUsd: (priceEth * 2000).toFixed(2),
-            quantity: 1,
-            imageUrl: '/model_images/muado.jpg'
-        });
-        alert(`Added "${bookName}" to cart!`);
-    }
-    
-    // Save cart
-    try {
-        localStorage.setItem('cart', JSON.stringify(cart));
-    } catch (e) {
-        console.warn('localStorage not available:', e);
-    }
-    
-    // Update cart badge
-    updateCartBadge();
+    // Fallback if helper not loaded
+    console.warn('Blockchain cart helper not loaded');
 }
 
 /**
  * Update cart badge count
  */
-function updateCartBadge() {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
-    // Find cart icon and add badge
-    const cartIcon = document.querySelector('a[href*="cart"] .bx-cart');
-    if (cartIcon && totalItems > 0) {
-        // Add badge
-        let badge = cartIcon.parentElement.querySelector('.cart-badge');
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'cart-badge';
-            badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold;';
-            cartIcon.parentElement.style.position = 'relative';
-            cartIcon.parentElement.appendChild(badge);
-        }
-        badge.textContent = totalItems;
+async function updateCartBadge() {
+    if (typeof updateCartBadgeBlockchain === 'function') {
+        await updateCartBadgeBlockchain();
     }
 }
+
+// ========================================
+// CRITICAL FIX: Listen for wallet connection
+// ========================================
+window.addEventListener('walletConnected', async function(event) {
+    console.log('📢 Wallet connected event received, initializing contracts...');
+    
+    // Re-initialize contracts when wallet connects
+    if (typeof initBlockchainContracts === 'function') {
+        await initBlockchainContracts();
+    }
+    
+    // If on home page, reload books
+    const isHomePage = window.location.pathname === '/' || window.location.pathname === '/home';
+    if (isHomePage) {
+        setTimeout(async () => {
+            console.log('🔄 Reloading books after wallet connection...');
+            const books = await loadBooksFromBlockchain();
+            renderBooksToPage(books);
+            updateCartBadge();
+        }, 500);
+    }
+    
+    // Always update cart badge when wallet connects
+    setTimeout(async () => {
+        if (typeof updateCartBadgeBlockchain === 'function') {
+            await updateCartBadgeBlockchain();
+        }
+    }, 1000);
+});
 
 // Auto-load books when page loads
 document.addEventListener('DOMContentLoaded', async function() {
@@ -460,4 +596,3 @@ document.addEventListener('DOMContentLoaded', async function() {
         updateCartBadge();
     }, 1000);
 });
-

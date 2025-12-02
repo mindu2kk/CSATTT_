@@ -22,7 +22,20 @@ class BlockchainProfileManager {
             // ========================================
             // UPDATED: Use centralized blockchain contracts
             // ========================================
-            await initBlockchainContracts();
+            // Wait for initBlockchainContracts to be available
+            if (typeof initBlockchainContracts === 'function') {
+                await initBlockchainContracts();
+            } else {
+                console.warn('initBlockchainContracts not available yet, waiting...');
+                // Wait a bit and retry
+                await new Promise(resolve => setTimeout(resolve, 100));
+                if (typeof initBlockchainContracts === 'function') {
+                    await initBlockchainContracts();
+                } else {
+                    console.error('initBlockchainContracts still not available');
+                    return;
+                }
+            }
             
             // Access centralized contracts
             if (!window.blockchainBooks.contracts || !window.blockchainBooks.contracts.userProfile) {

@@ -8,7 +8,7 @@
 async function initAdminBlockchain() {
     try {
         // Wait for wallet
-        if (!window.walletState.isConnected) {
+        if (!window.walletState || !window.walletState.isConnected) {
             console.warn('Wallet not connected');
             return false;
         }
@@ -30,10 +30,10 @@ async function initAdminBlockchain() {
  */
 async function mintBookToBlockchain(bookData) {
     try {
-        if (!window.walletState.isConnected) {
+        if (!window.walletState || !window.walletState.isConnected) {
             alert('Please connect MetaMask first!');
             await connectMetaMask();
-            if (!window.walletState.isConnected) return null;
+            if (!window.walletState || !window.walletState.isConnected) return null;
         }
         
         await initAdminBlockchain();
@@ -143,9 +143,9 @@ async function getBorrowedBooksInfo() {
                         bookId: book.id,
                         bookName: book.name,
                         borrower: loanInfo.borrower || loanInfo[0],
-                        borrowedAt: new Date(Number(loanInfo.borrowedAt || loanInfo[2]) * 1000),
-                        dueDate: new Date(Number(loanInfo.dueDate || loanInfo[3]) * 1000),
-                        deposit: ethers.utils.formatEther(loanInfo.deposit || loanInfo[4] || 0)
+                        borrowedAt: new Date(Number(loanInfo.borrowedAt || loanInfo[1]) * 1000),
+                        dueDate: new Date(Number(loanInfo.dueDate || loanInfo[2]) * 1000),
+                        deposit: ethers.utils.formatEther(loanInfo.deposit || loanInfo[3] || 0)
                     });
                 } catch (error) {
                     console.warn(`Failed to get loan info for book ${book.id}:`, error);
