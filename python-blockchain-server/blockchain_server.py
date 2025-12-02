@@ -1,12 +1,6 @@
 """
 Blockchain Library Server - Python FastAPI Backend
-Provides REST API for blockchain interactions
-
-Features:
-- Real-time blockchain data
-- Book NFT management
-- Library core interactions
-- Smart contract integration
+Cung cấp 2 API: Lấy danh sách sách đang mượn và lịch sử trả sách
 
 Requirements: pip install fastapi uvicorn web3
 Run: python blockchain_server.py
@@ -15,24 +9,23 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from web3 import Web3
 import json
-import os
 import uvicorn
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-# Initialize Web3 first (needed for lifespan)
+# Initialize Web3
 w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
-contracts = {}
+library_core_contract = None
+book_nft_contract = None
 
 def load_contracts():
-    """Load contracts from deployment files"""
+    """Load contracts from deployment"""
+    global library_core_contract, book_nft_contract
     try:
-        # Find contracts.json file
         contracts_path = Path(__file__).parent.parent / "web" / "contracts.json"
         
         if not contracts_path.exists():
-            print(f"⚠️ Contracts file not found at: {contracts_path}")
-            print("   Please deploy contracts first: npm run deploy")
+            print(f"⚠️ Contracts not found. Deploy first: npm run deploy")
             return False
             
         with open(contracts_path, "r") as f:
@@ -41,87 +34,66 @@ def load_contracts():
         library_addr = data["libraryCore"]
         nft_addr = data["bookNFT"]
         
-        # Load ABIs from artifacts
+        # Load ABIs
         artifacts_dir = Path(__file__).parent.parent / "artifacts" / "contracts"
         
-        library_abi_path = artifacts_dir / "LibraryCore.sol" / "LibraryCore.json"
+        library_abi_path = artifacts_dir / "LibraryCoreV3.sol" / "LibraryCoreV3.json"
         nft_abi_path = artifacts_dir / "BookNFT.sol" / "BookNFT.json"
         
         if not library_abi_path.exists() or not nft_abi_path.exists():
-            print(f"⚠️ Contract ABIs not found. Please compile contracts: npm run compile")
+            print(f"⚠️ ABIs not found. Compile first: npm run compile")
             return False
         
         with open(library_abi_path, "r") as f:
             library_abi = json.load(f)["abi"]
-            contracts["library"] = w3.eth.contract(
+            library_core_contract = w3.eth.contract(
                 address=Web3.to_checksum_address(library_addr), 
                 abi=library_abi
             )
         
         with open(nft_abi_path, "r") as f:
             nft_abi = json.load(f)["abi"]
-            contracts["nft"] = w3.eth.contract(
+            book_nft_contract = w3.eth.contract(
                 address=Web3.to_checksum_address(nft_addr), 
                 abi=nft_abi
             )
         
-        print(f"✅ Contracts loaded successfully")
+        print(f"✅ Contracts loaded")
         print(f"   LibraryCore: {library_addr}")
         print(f"   BookNFT: {nft_addr}")
-        print(f"   Chain ID: {w3.eth.chain_id}")
         return True
         
-    except FileNotFoundError as e:
-        print(f"❌ File not found: {e}")
-        print("   Make sure contracts are deployed and compiled.")
-        return False
-    except KeyError as e:
-        print(f"❌ Missing key in contracts.json: {e}")
-        return False
     except Exception as e:
         print(f"❌ Error loading contracts: {e}")
-        import traceback
-        traceback.print_exc()
         return False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup and shutdown events"""
-    # Startup
+    """Startup and shutdown"""
     print("\n" + "="*60)
     print("🚀 Starting Blockchain Library Server")
     print("="*60)
     
-    # Check blockchain connection
     if w3.is_connected():
-        print(f"✅ Connected to blockchain")
-        print(f"   Chain ID: {w3.eth.chain_id}")
-        print(f"   Latest Block: {w3.eth.block_number}")
+        print(f"✅ Connected to blockchain (Chain ID: {w3.eth.chain_id})")
     else:
-        print("⚠️  Not connected to blockchain")
-        print("   Make sure Hardhat node is running: npx hardhat node")
+        print("⚠️ Not connected. Start Hardhat: npx hardhat node")
     
-    # Load contracts
-    print("\n📚 Loading smart contracts...")
-    success = load_contracts()
-    
-    if not success:
-        print("\n⚠️  Server started but contracts are not loaded")
-        print("   Deploy contracts with: npm run deploy")
+    print("\n📚 Loading contracts...")
+    load_contracts()
     
     print("\n" + "="*60)
-    print("✅ Server is ready!")
+    print("✅ Server ready!")
     print("="*60 + "\n")
     
     yield
     
-    # Shutdown
-    print("\n👋 Shutting down Blockchain Library Server...")
+    print("\n👋 Shutting down...")
 
-# Initialize FastAPI app with lifespan
+# Initialize FastAPI
 app = FastAPI(
-    title="Blockchain Library Server",
-    description="REST API for Library Blockchain System",
+    title="Blockchain Library API",
+    description="API để lấy dữ liệu mượn/trả sách từ blockchain",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -139,263 +111,166 @@ app.add_middleware(
 
 @app.get("/")
 def health():
-    """Health check endpoint"""
+    """Health check"""
     is_connected = w3.is_connected()
-    contracts_loaded = len(contracts) > 0
+    contracts_loaded = library_core_contract is not None
     
     return {
         "status": "running" if is_connected and contracts_loaded else "degraded",
         "blockchain_connected": is_connected,
         "contracts_loaded": contracts_loaded,
         "chain_id": w3.eth.chain_id if is_connected else None,
-        "latest_block": w3.eth.block_number if is_connected else None,
-        "message": "✅ All systems operational" if (is_connected and contracts_loaded) else "⚠️ Some services unavailable"
+        "message": "Server đang chạy"
     }
 
-@app.get("/books")
-def get_books():
-    """Get all books from blockchain"""
+@app.get("/borrowed-books/{user_address}")
+def get_borrowed_books(user_address: str):
+    """
+    Lấy danh sách sách đang mượn của user
+    
+    Args:
+        user_address: Địa chỉ ví của user
+        
+    Returns:
+        Danh sách sách đang mượn với thông tin chi tiết
+    """
     try:
-        if "nft" not in contracts:
+        if not library_core_contract or not book_nft_contract:
             raise HTTPException(
                 status_code=503, 
-                detail="Contracts not loaded. Please deploy contracts first."
+                detail="Contracts chưa load. Deploy contracts trước."
             )
         
         if not w3.is_connected():
             raise HTTPException(
                 status_code=503,
-                detail="Blockchain connection unavailable"
+                detail="Không kết nối được blockchain"
             )
             
-        nft_contract = contracts["nft"]
+        if not Web3.is_address(user_address):
+            raise HTTPException(
+                status_code=400, 
+                detail="Địa chỉ ví không hợp lệ"
+            )
         
-        # Get contract info
-        name = nft_contract.functions.name().call()
-        symbol = nft_contract.functions.symbol().call()
+        user_checksum = Web3.to_checksum_address(user_address)
         
-        # Try to get total supply (if method exists)
-        try:
-            total_supply = nft_contract.functions.totalSupply().call() if hasattr(nft_contract.functions, 'totalSupply') else 0
-        except:
-            total_supply = 0
+        # Lấy danh sách sách đang mượn từ smart contract
+        current_loans = library_core_contract.functions.getUserCurrentLoans(user_checksum).call()
         
-        # Return sample data for now (can be extended to fetch real books)
-        books = [
-            {"id": 0, "title": "Blockchain Programming", "author": "Satoshi", "available": True},
-            {"id": 1, "title": "Smart Contracts Guide", "author": "Vitalik", "available": True},
-            {"id": 2, "title": "DeFi Development", "author": "Andre", "available": False}
-        ]
+        borrowed_books = []
+        for book_id in current_loans:
+            # Lấy thông tin loan
+            loan_info = library_core_contract.functions.getLoanInfo(book_id).call()
+            
+            # Lấy thông tin sách
+            book_info = book_nft_contract.functions.getBookInfo(book_id).call()
+            
+            borrowed_books.append({
+                "bookId": book_id,
+                "bookName": book_info[0],
+                "description": book_info[1],
+                "borrowedAt": loan_info[1],
+                "dueDate": loan_info[2],
+                "deposit": w3.from_wei(loan_info[3], 'ether'),
+                "statusAtLoan": loan_info[5]
+            })
         
         return {
             "success": True,
-            "contract_info": {
-                "name": name, 
-                "symbol": symbol,
-                "address": nft_contract.address
-            },
-            "books": books,
-            "total": len(books),
-            "total_supply": total_supply
+            "userAddress": user_checksum,
+            "totalBorrowed": len(borrowed_books),
+            "books": borrowed_books
         }
+        
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching books: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Lỗi khi lấy dữ liệu: {str(e)}"
+        )
 
-@app.get("/books/{book_id}")
-def get_book(book_id: int):
-    """Get specific book by ID"""
-    try:
-        # Sample book data
-        books = {
-            0: {"id": 0, "title": "Blockchain Programming", "author": "Satoshi", "available": True},
-            1: {"id": 1, "title": "Smart Contracts Guide", "author": "Vitalik", "available": True},
-            2: {"id": 2, "title": "DeFi Development", "author": "Andre", "available": False}
-        }
+@app.get("/return-history/{user_address}")
+def get_return_history(user_address: str):
+    """
+    Lấy lịch sử trả sách của user
+    
+    Args:
+        user_address: Địa chỉ ví của user
         
-        if book_id in books:
-            return books[book_id]
-        else:
-            raise HTTPException(status_code=404, detail="Book not found")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/books/add")
-def prepare_add_book(title: str, author: str, owner: str):
-    """Prepare transaction to add new book"""
+    Returns:
+        Lịch sử tất cả sách đã trả
+    """
     try:
-        if "nft" not in contracts:
+        if not library_core_contract or not book_nft_contract:
             raise HTTPException(
                 status_code=503, 
-                detail="Contracts not loaded. Please deploy contracts first."
+                detail="Contracts chưa load. Deploy contracts trước."
             )
         
         if not w3.is_connected():
-            raise HTTPException(status_code=503, detail="Blockchain connection unavailable")
+            raise HTTPException(
+                status_code=503,
+                detail="Không kết nối được blockchain"
+            )
             
-        if not title or not author:
-            raise HTTPException(status_code=400, detail="Title and author are required")
-            
-        if not Web3.is_address(owner):
-            raise HTTPException(status_code=400, detail="Invalid owner address")
-            
-        nft_contract = contracts["nft"]
-        owner_checksum = Web3.to_checksum_address(owner)
+        if not Web3.is_address(user_address):
+            raise HTTPException(
+                status_code=400, 
+                detail="Địa chỉ ví không hợp lệ"
+            )
         
-        # Prepare mint transaction
-        txn = nft_contract.functions.mintBook(title, author).build_transaction({
-            'from': owner_checksum,
-            'gas': 300000,
-            'gasPrice': w3.to_wei('20', 'gwei'),
-            'nonce': w3.eth.get_transaction_count(owner_checksum)
-        })
+        user_checksum = Web3.to_checksum_address(user_address)
+        
+        # Lấy lịch sử mượn sách (bao gồm cả đã trả)
+        loan_history = library_core_contract.functions.getUserLoanHistory(user_checksum).call()
+        
+        returned_books = []
+        for book_id in loan_history:
+            # Lấy thông tin loan
+            loan_info = library_core_contract.functions.getLoanInfo(book_id).call()
+            
+            # Chỉ lấy sách đã trả (isReturned = True)
+            if loan_info[4]:  # isReturned
+                # Lấy thông tin sách
+                book_info = book_nft_contract.functions.getBookInfo(book_id).call()
+                
+                returned_books.append({
+                    "bookId": book_id,
+                    "bookName": book_info[0],
+                    "description": book_info[1],
+                    "borrowedAt": loan_info[1],
+                    "returnedAt": loan_info[7],
+                    "deposit": w3.from_wei(loan_info[3], 'ether'),
+                    "statusAtLoan": loan_info[5],
+                    "statusAtReturn": loan_info[6],
+                    "latePenalty": w3.from_wei(loan_info[8], 'ether'),
+                    "damagePenalty": w3.from_wei(loan_info[9], 'ether')
+                })
         
         return {
             "success": True,
-            "transaction": txn,
-            "message": "Transaction prepared. Sign with your wallet to add book.",
-            "estimated_gas": 300000
+            "userAddress": user_checksum,
+            "totalReturned": len(returned_books),
+            "books": returned_books
         }
+        
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error preparing transaction: {str(e)}")
-
-@app.post("/books/{book_id}/borrow")
-def prepare_borrow(book_id: int, borrower: str):
-    """Prepare borrow transaction"""
-    try:
-        if "library" not in contracts:
-            raise HTTPException(status_code=503, detail="Contracts not loaded")
-        
-        if not w3.is_connected():
-            raise HTTPException(status_code=503, detail="Blockchain connection unavailable")
-            
-        if not Web3.is_address(borrower):
-            raise HTTPException(status_code=400, detail="Invalid borrower address")
-        
-        contract = contracts["library"]
-        borrower_checksum = Web3.to_checksum_address(borrower)
-        
-        txn = contract.functions.borrowBook(book_id).build_transaction({
-            'from': borrower_checksum,
-            'gas': 200000,
-            'gasPrice': w3.to_wei('20', 'gwei'),
-            'nonce': w3.eth.get_transaction_count(borrower_checksum)
-        })
-        
-        return {
-            "success": True,
-            "transaction": txn, 
-            "book_id": book_id,
-            "message": "Borrow transaction prepared. Sign with your wallet."
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error preparing borrow: {str(e)}")
-
-@app.post("/books/{book_id}/return")
-def prepare_return(book_id: int, borrower: str):
-    """Prepare return transaction"""
-    try:
-        if "library" not in contracts:
-            raise HTTPException(status_code=503, detail="Contracts not loaded")
-        
-        if not w3.is_connected():
-            raise HTTPException(status_code=503, detail="Blockchain connection unavailable")
-            
-        if not Web3.is_address(borrower):
-            raise HTTPException(status_code=400, detail="Invalid borrower address")
-        
-        contract = contracts["library"]
-        borrower_checksum = Web3.to_checksum_address(borrower)
-        
-        txn = contract.functions.returnBook(book_id).build_transaction({
-            'from': borrower_checksum,
-            'gas': 200000,
-            'gasPrice': w3.to_wei('20', 'gwei'),
-            'nonce': w3.eth.get_transaction_count(borrower_checksum)
-        })
-        
-        return {
-            "success": True,
-            "transaction": txn, 
-            "book_id": book_id,
-            "message": "Return transaction prepared. Sign with your wallet."
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error preparing return: {str(e)}")
-
-@app.get("/nft/balance/{address}")
-def get_nft_balance(address: str):
-    """Get NFT balance for an address"""
-    try:
-        if "nft" not in contracts:
-            raise HTTPException(status_code=503, detail="Contracts not loaded")
-        
-        if not w3.is_connected():
-            raise HTTPException(status_code=503, detail="Blockchain connection unavailable")
-            
-        if not Web3.is_address(address):
-            raise HTTPException(status_code=400, detail="Invalid address")
-        
-        contract = contracts["nft"]
-        address_checksum = Web3.to_checksum_address(address)
-        balance = contract.functions.balanceOf(address_checksum).call()
-        
-        return {
-            "success": True,
-            "address": address_checksum, 
-            "balance": balance
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting balance: {str(e)}")
-
-@app.get("/blockchain/status")
-def blockchain_status():
-    """Get blockchain connection status and info"""
-    try:
-        is_connected = w3.is_connected()
-        
-        status = {
-            "connected": is_connected,
-            "contracts_loaded": len(contracts) > 0,
-            "available_contracts": list(contracts.keys())
-        }
-        
-        if is_connected:
-            status.update({
-                "chain_id": w3.eth.chain_id,
-                "latest_block": w3.eth.block_number,
-                "gas_price": w3.eth.gas_price,
-                "rpc_url": "http://127.0.0.1:8545"
-            })
-        else:
-            status["error"] = "Not connected to blockchain"
-            
-        return status
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting blockchain status: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Lỗi khi lấy dữ liệu: {str(e)}"
+        )
 
 if __name__ == "__main__":
     print("\n🌐 Blockchain Library Server")
-    print("📍 Server URL: http://localhost:8001")
-    print("📚 API Documentation: http://localhost:8001/docs")
-    print("📖 Interactive API: http://localhost:8001/redoc")
-    print("\n⏹️  Press Ctrl+C to stop the server\n")
+    print("📍 Server: http://localhost:8001")
+    print("📚 API Docs: http://localhost:8001/docs")
+    print("\n⏹️ Press Ctrl+C to stop\n")
     
     try:
         uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
     except KeyboardInterrupt:
-        print("\n\n👋 Server stopped gracefully")
-    except Exception as e:
-        print(f"\n❌ Server error: {e}")
-        import traceback
-        traceback.print_exc()
+        print("\n\n👋 Server stopped")
